@@ -1,18 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GoogleMap, Marker, Polyline } from '@react-google-maps/api'; // ⭐️ useJsApiLoader 삭제
-
-// ⭐️ API 키, libraries 설정 삭제
+import { GoogleMap, Marker, Polyline } from '@react-google-maps/api';
 
 const mapContainerStyle = { width: '100%', height: '100%', borderRadius: '1.5rem' };
 const defaultCenter = { lat: -33.8688, lng: 151.2093 }; 
 
-// ⭐️ googleMapsLoaded를 props로 받음
 export default function RouteCheck({ timeline, googleMapsLoaded }) {
   const availableDays = Object.keys(timeline).filter(day => timeline[day].length > 0).sort();
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const mapRef = useRef(null);
-
-  // ⭐️ 기존 useJsApiLoader 로직 삭제
 
   const currentDay = availableDays[currentDayIndex];
   const items = currentDay ? timeline[currentDay] : [];
@@ -56,7 +51,8 @@ export default function RouteCheck({ timeline, googleMapsLoaded }) {
   return (
     <div className="flex flex-col gap-6 relative pb-20">
       
-      <div className="flex items-center justify-between bg-white rounded-3xl shadow-sm border border-sky-100 p-4 sticky top-48 z-20"> {/* ⭐️ top 위치 조절 */}
+      {/* ⭐️ 상단 탭 딱 맞게 틀고정 */}
+      <div className="flex items-center justify-between bg-white rounded-3xl shadow-sm border border-sky-100 p-4 sticky top-[136px] z-30">
         <button onClick={() => setCurrentDayIndex(prev => Math.max(0, prev - 1))} disabled={currentDayIndex === 0} className="px-4 py-2 text-sm font-bold text-sky-600 disabled:text-slate-300">◀ 이전</button>
         <div className="text-center">
           <h2 className="text-xl font-black text-sky-800">Day {currentDayIndex + 1}</h2>
@@ -65,7 +61,7 @@ export default function RouteCheck({ timeline, googleMapsLoaded }) {
         <button onClick={() => setCurrentDayIndex(prev => Math.min(availableDays.length - 1, prev + 1))} disabled={currentDayIndex === availableDays.length - 1} className="px-4 py-2 text-sm font-bold text-sky-600 disabled:text-slate-300">다음 ▶</button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px] relative z-10">
         <div className="bg-white rounded-3xl shadow-sm border border-sky-100 p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4">
           <h3 className="text-center text-sky-700 font-black mb-4">📍 이동 순서</h3>
           {validItems.length === 0 ? (
@@ -86,7 +82,6 @@ export default function RouteCheck({ timeline, googleMapsLoaded }) {
         </div>
 
         <div className="lg:col-span-2 bg-slate-100 rounded-3xl shadow-inner border border-sky-100 overflow-hidden relative">
-          {/* ⭐️ props로 받은 googleMapsLoaded 사용 */}
           {!googleMapsLoaded ? (
             <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold">지도 불러오는 중...</div>
           ) : (

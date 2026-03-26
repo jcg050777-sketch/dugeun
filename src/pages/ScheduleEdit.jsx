@@ -3,19 +3,29 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// ⭐️ 방어 로직 1: 시간이 비어있거나 이상한 글자여도 절대 에러 안 남
-const parseTime = (timeStr) => {
-  if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(' ')) return { ampm: 'AM', hour: '12', minute: '00' };
-  const [ampm, rest] = timeStr.split(' ');
-  if (!rest || !rest.includes(':')) return { ampm, hour: '12', minute: '00' };
-  const [hour, minute] = rest.split(':');
-  return { ampm, hour, minute };
+// ⭐️ 데이터 변환기: 과거의 객체 데이터도 에러 없이 받아냄
+const parseTimeSafe = (timeData) => {
+  if (!timeData) return { ampm: 'AM', hour: '12', minute: '00' };
+  if (typeof timeData === 'object') {
+    return {
+      ampm: timeData.ampm || 'AM',
+      hour: String(timeData.hour || '12').padStart(2, '0'),
+      minute: String(timeData.minute || timeData.min || '00').padStart(2, '0')
+    };
+  }
+  if (typeof timeData === 'string') {
+    const [ampm, rest] = timeData.split(' ');
+    if (!rest || !rest.includes(':')) return { ampm: 'AM', hour: '12', minute: '00' };
+    const [hour, minute] = rest.split(':');
+    return { ampm, hour: String(hour).padStart(2, '0'), minute: String(minute).padStart(2, '0') };
+  }
+  return { ampm: 'AM', hour: '12', minute: '00' };
 };
 
 const formatTime = (ampm, hour, minute) => `${ampm} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
 function SortableItem({ item, source }) {
-  if (!item) return null; // ⭐️ 방어 로직 2: 아이템이 null이면 그리지 않음
+  if (!item) return null;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
@@ -28,7 +38,7 @@ function SortableItem({ item, source }) {
 }
 
 function DroppableStorage({ items }) {
-  const safeItems = items || []; // ⭐️ 방어 로직 3: 배열이 아닐 경우 빈 배열로 처리
+  const safeItems = items || []; 
   const { setNodeRef } = useDroppable({ id: 'storage' });
   return (
     <div ref={setNodeRef} className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-[200px]">
@@ -45,12 +55,12 @@ function TimelineItem({ item, dayStr, handleUpdateItem, handleRemoveFromTimeline
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto' };
 
-  const start = parseTime(item.startTime);
-  const end = parseTime(item.endTime);
+  const start = parseTimeSafe(item.startTime);
+  const end = parseTimeSafe(item.endTime);
   const [showMemo, setShowMemo] = useState(!!item.memo);
 
   const updateTime = (field, part, value) => {
-    const current = parseTime(item[field]);
+    const current = parseTimeSafe(item[field]);
     const updated = { ...current, [part]: value };
     handleUpdateItem(dayStr, item.id, field, formatTime(updated.ampm, updated.hour, updated.minute));
   };
@@ -93,7 +103,7 @@ function TimelineItem({ item, dayStr, handleUpdateItem, handleRemoveFromTimeline
 
 function DroppableDay({ dayStr, dateLabel, items, handleUpdateItem, handleRemoveFromTimeline }) {
   const { setNodeRef } = useDroppable({ id: dayStr });
-  const safeItems = items || []; // ⭐️ 방어 로직 4: 타임라인 데이터가 날아갔어도 빈 배열로 처리
+  const safeItems = items || []; 
 
   return (
     <div ref={setNodeRef} className="bg-sky-50/30 rounded-3xl p-6 border border-sky-100 mb-8 shadow-sm">
@@ -118,7 +128,6 @@ export default function ScheduleEdit({ places, timeline, setTimeline }) {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  // ⭐️ 방어 로직 5: 전체 데이터가 null이 되지 않도록 꽉 묶음
   const safeTimeline = timeline || {};
   const safePlaces = places || [];
 
@@ -133,9 +142,7 @@ export default function ScheduleEdit({ places, timeline, setTimeline }) {
         while (current <= end) {
           const dayStr = current.toISOString().split('T')[0];
           validDays.push(dayStr);
-          if (!newTimeline[dayStr] || !Array.isArray(newTimeline[dayStr])) {
-            newTimeline[dayStr] = []; // 배열이 아니면 강제로 빈 배열 주입
-          }
+          if (!newTimeline[dayStr] || !Array.isArray(newTimeline[dayStr])) newTimeline[dayStr] = [];
           current.setDate(current.getDate() + 1);
         }
         Object.keys(newTimeline).forEach(key => { if (!validDays.includes(key)) delete newTimeline[key]; });
@@ -203,22 +210,19 @@ export default function ScheduleEdit({ places, timeline, setTimeline }) {
   };
 
   const handleUpdateItem = (dayStr, itemId, field, value) => {
-    setTimeline(prev => ({
-      ...prev, [dayStr]: (prev[dayStr] || []).map(item => item.id === itemId ? { ...item, [field]: value } : item)
-    }));
+    setTimeline(prev => ({ ...prev, [dayStr]: (prev[dayStr] || []).map(item => item.id === itemId ? { ...item, [field]: value } : item) }));
   };
 
   const handleRemoveFromTimeline = (dayStr, itemId) => {
-    setTimeline(prev => ({
-      ...prev, [dayStr]: (prev[dayStr] || []).filter(item => item.id !== itemId)
-    }));
+    setTimeline(prev => ({ ...prev, [dayStr]: (prev[dayStr] || []).filter(item => item.id !== itemId) }));
   };
 
   const activePlace = activeId ? safePlaces.find(p => p.id === activeId) || Object.values(safeTimeline).flat().filter(Boolean).find(p => p.id === activeId) : null;
 
   return (
     <div className="flex flex-col gap-8 pb-20">
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-sky-100 flex items-center gap-6 sticky top-48 z-30">
+      {/* ⭐️ 기간 설정 박스는 위로 스크롤 되도록 Sticky 제거 (자연스럽게 스크롤됨) */}
+      <div className="bg-white p-6 rounded-3xl shadow-sm border border-sky-100 flex items-center gap-6">
         <h3 className="text-lg font-black text-sky-700 flex items-center gap-2"><span>🗓️</span> 여행 기간 설정</h3>
         <div className="flex items-center gap-3">
           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-sky-50 border border-sky-100 p-2.5 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-sky-400" />
@@ -230,7 +234,8 @@ export default function ScheduleEdit({ places, timeline, setTimeline }) {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col lg:flex-row gap-8 items-start relative">
           
-          <div className="w-full lg:w-72 bg-white rounded-3xl shadow-sm border border-sky-100 p-6 flex flex-col h-[600px] sticky top-72 z-20 shrink-0">
+          {/* ⭐️ 보관함만 왼쪽에서 딱! 고정되도록 top 위치 교정 */}
+          <div className="w-full lg:w-72 bg-white rounded-3xl shadow-sm border border-sky-100 p-6 flex flex-col h-[600px] sticky top-[136px] z-20 shrink-0">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-black text-slate-700 flex items-center gap-2"><span>🗂️</span> 보관함</h3>
               <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="text-xs font-bold bg-sky-50 border border-sky-100 text-sky-700 p-1.5 rounded-lg outline-none">

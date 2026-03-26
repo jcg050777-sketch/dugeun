@@ -1,25 +1,35 @@
 import React, { useState } from 'react';
 
-// --- (도우미 함수) 문자열 시간(ex: "PM 12:00")을 시간/분 숫자로 변환 ---
-const parseTimeStr = (timeStr) => {
-  if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(' ')) return { h: 0, m: 0 };
-  const [ampm, rest] = timeStr.split(' ');
-  if (!rest || !rest.includes(':')) return { h: 0, m: 0 };
+// ⭐️ 초강력 방어 로직: 옛날 데이터(객체)든 최신 데이터(글자)든 완벽하게 숫자로 변환
+const parseSafeTimeData = (timeData) => {
+  if (!timeData) return { h: 0, m: 0, str: 'AM 12:00' };
   
-  const [hourStr, minStr] = rest.split(':');
-  let h = parseInt(hourStr) || 0;
-  const m = parseInt(minStr) || 0;
+  // 1. 옛날 데이터 방식 (객체 형태)
+  if (typeof timeData === 'object') {
+    let h = parseInt(timeData.hour) || 0;
+    const m = parseInt(timeData.minute || timeData.min) || 0;
+    const ampm = timeData.ampm || 'AM';
+    const str = `${ampm} ${String(timeData.hour || 12).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return { h, m, str };
+  }
   
-  if (ampm === 'PM' && h < 12) h += 12;
-  if (ampm === 'AM' && h === 12) h = 0;
-  return { h, m };
-};
-
-const formatTimeStr = (h, m) => {
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  let hh = h % 12;
-  if (hh === 0) hh = 12;
-  return `${ampm} ${hh}:${m.toString().padStart(2, '0')}`;
+  // 2. 최신 데이터 방식 (문자열 형태)
+  if (typeof timeData === 'string') {
+    const [ampm, rest] = timeData.split(' ');
+    if (!rest || !rest.includes(':')) return { h: 0, m: 0, str: 'AM 12:00' };
+    const [hourStr, minStr] = rest.split(':');
+    let h = parseInt(hourStr) || 0;
+    const m = parseInt(minStr) || 0;
+    
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return { h, m, str: timeData };
+  }
+  
+  return { h: 0, m: 0, str: 'AM 12:00' };
 };
 
 const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -28,7 +38,7 @@ const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
 };
 
 const describeSector = (x, y, radius, startAngle, endAngle) => {
-  if (startAngle === endAngle) return "";
+  if (isNaN(startAngle) || isNaN(endAngle) || startAngle === endAngle) return "";
   const start = polarToCartesian(x, y, radius, endAngle);
   const end = polarToCartesian(x, y, radius, startAngle);
   const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
@@ -47,24 +57,22 @@ const getCategoryColor = (category) => {
 };
 
 export default function ScheduleCheck({ timeline }) {
-  const availableDays = Object.keys(timeline).filter(day => timeline[day].length > 0).sort();
+  const safeTimeline = timeline || {};
+  const availableDays = Object.keys(safeTimeline).filter(day => Array.isArray(safeTimeline[day]) && safeTimeline[day].length > 0).sort();
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const [viewMode, setViewMode] = useState('일반');
 
   const currentDayStr = availableDays[currentDayIndex];
-  const currentItems = currentDayStr ? timeline[currentDayStr] : [];
+  const currentItems = currentDayStr ? safeTimeline[currentDayStr] : [];
 
   const computedItems = currentItems.map((item) => {
-    // ⭐️ 문자열 시간 포맷을 안전하게 분해
-    const s = parseTimeStr(item.startTime || 'AM 12:00');
-    const e = parseTimeStr(item.endTime || 'AM 01:00');
+    // ⭐️ 어떤 쓰레기 데이터가 들어와도 안전하게 변환
+    const s = parseSafeTimeData(item.startTime);
+    const e = parseSafeTimeData(item.endTime);
     
-    const startH = s.h; const startM = s.m;
-    const endH = e.h; const endM = e.m;
-
-    const startTotalMins = startH * 60 + startM;
-    let endTotalMins = endH * 60 + endM;
-    if (endTotalMins < startTotalMins) endTotalMins += 1440; // 자정 넘김 처리
+    const startTotalMins = s.h * 60 + s.m;
+    let endTotalMins = e.h * 60 + e.m;
+    if (endTotalMins < startTotalMins) endTotalMins += 1440; 
 
     const durMins = endTotalMins - startTotalMins;
     const durHrs = Math.floor(durMins / 60);
@@ -78,16 +86,13 @@ export default function ScheduleCheck({ timeline }) {
       ...item,
       colorHex: theme.hex,
       colorClass: `${theme.bg} ${theme.text} ${theme.border}`,
-      computedStartStr: item.startTime || 'AM 12:00',
-      computedEndStr: item.endTime || 'AM 01:00',
+      computedStartStr: s.str,
+      computedEndStr: e.str,
       computedDurationStr,
       startTotalMins,
       endTotalMins
     };
   });
-
-  const handlePrevDay = () => { if (currentDayIndex > 0) setCurrentDayIndex(prev => prev - 1); };
-  const handleNextDay = () => { if (currentDayIndex < availableDays.length - 1) setCurrentDayIndex(prev => prev + 1); };
 
   if (availableDays.length === 0) {
     return (
@@ -103,13 +108,14 @@ export default function ScheduleCheck({ timeline }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-sky-100 flex items-center justify-between sticky top-48 z-30">
-        <button onClick={handlePrevDay} disabled={currentDayIndex === 0} className={`px-4 py-2 rounded-xl font-black text-lg transition-colors ${currentDayIndex === 0 ? 'text-slate-200 cursor-not-allowed' : 'text-sky-600 hover:bg-sky-50'}`}>◀ 이전</button>
+      {/* ⭐️ 상단 탭 딱 맞게 틀고정 */}
+      <div className="bg-white p-4 rounded-3xl shadow-sm border border-sky-100 flex items-center justify-between sticky top-[136px] z-30">
+        <button onClick={() => setCurrentDayIndex(prev => prev - 1)} disabled={currentDayIndex === 0} className={`px-4 py-2 rounded-xl font-black text-lg transition-colors ${currentDayIndex === 0 ? 'text-slate-200 cursor-not-allowed' : 'text-sky-600 hover:bg-sky-50'}`}>◀ 이전</button>
         <div className="text-center">
           <h2 className="text-2xl font-black text-sky-700">Day {currentDayIndex + 1}</h2>
           <p className="text-sm font-bold text-slate-400">{formattedDate}</p>
         </div>
-        <button onClick={handleNextDay} disabled={currentDayIndex === availableDays.length - 1} className={`px-4 py-2 rounded-xl font-black text-lg transition-colors ${currentDayIndex === availableDays.length - 1 ? 'text-slate-200 cursor-not-allowed' : 'text-sky-600 hover:bg-sky-50'}`}>다음 ▶</button>
+        <button onClick={() => setCurrentDayIndex(prev => prev + 1)} disabled={currentDayIndex === availableDays.length - 1} className={`px-4 py-2 rounded-xl font-black text-lg transition-colors ${currentDayIndex === availableDays.length - 1 ? 'text-slate-200 cursor-not-allowed' : 'text-sky-600 hover:bg-sky-50'}`}>다음 ▶</button>
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-sky-100 min-h-[600px] flex flex-col p-8 relative z-10">
@@ -131,17 +137,12 @@ export default function ScheduleCheck({ timeline }) {
                     {idx !== computedItems.length - 1 && <div className="absolute top-6 w-0.5 h-12 bg-sky-200"></div>}
                     <div className="w-4 h-4 rounded-full border-4 border-sky-400 bg-white z-10"></div>
                   </div>
-                  
                   <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between hover:border-sky-200 transition-colors shadow-sm gap-4">
                     <div className="flex-1 min-w-[120px]">
-                      <h4 className="font-black text-slate-800 text-[15px] truncate">{item.alias}</h4>
+                      <h4 className="font-black text-slate-800 text-[15px] truncate">{item.alias || '이름 없음'}</h4>
                     </div>
-                    <div className={`w-16 shrink-0 text-center text-xs font-bold py-1 rounded-md border ${item.colorClass}`}>
-                      {item.category}
-                    </div>
-                    <div className="w-24 shrink-0 text-center text-sm font-bold text-slate-500">
-                      ⏱ {item.computedDurationStr}
-                    </div>
+                    <div className={`w-16 shrink-0 text-center text-xs font-bold py-1 rounded-md border ${item.colorClass}`}>{item.category}</div>
+                    <div className="w-24 shrink-0 text-center text-sm font-bold text-slate-500">⏱ {item.computedDurationStr}</div>
                     <div className="w-[180px] shrink-0 text-center bg-white text-sky-700 py-1.5 rounded-xl font-bold text-sm shadow-sm border border-sky-100">
                       {item.computedStartStr} <span className="text-sky-300 mx-1">~</span> {item.computedEndStr}
                     </div>
@@ -156,7 +157,6 @@ export default function ScheduleCheck({ timeline }) {
           <div className="flex items-center justify-center py-6">
             <div className="relative w-[500px] h-[500px]">
               <div className="absolute inset-0 rounded-full border-[16px] border-slate-50 shadow-inner bg-white"></div>
-              
               <span className="absolute top-2 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 z-20">00:00</span>
               <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 z-20">12:00</span>
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 z-20">06:00</span>
@@ -167,7 +167,6 @@ export default function ScheduleCheck({ timeline }) {
                   const startAngle = (item.startTotalMins / 1440) * 360;
                   const endAngle = (item.endTotalMins / 1440) * 360;
                   const adjustedEndAngle = endAngle < startAngle ? endAngle + 360 : endAngle;
-                  
                   const midAngle = (startAngle + adjustedEndAngle) / 2;
                   const textPos = polarToCartesian(100, 100, 68, midAngle);
                   const showText = (adjustedEndAngle - startAngle) > 7.5;
@@ -179,7 +178,7 @@ export default function ScheduleCheck({ timeline }) {
                       </path>
                       {showText && (
                         <>
-                          <text x={textPos.x} y={textPos.y - 3} fill="white" fontSize="4.5" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}>{item.alias}</text>
+                          <text x={textPos.x} y={textPos.y - 3} fill="white" fontSize="4.5" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}>{item.alias || '이름 없음'}</text>
                           <text x={textPos.x} y={textPos.y + 3} fill="rgba(255,255,255,0.9)" fontSize="3.5" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}>{item.computedStartStr} ~ {item.computedEndStr}</text>
                         </>
                       )}
@@ -187,7 +186,6 @@ export default function ScheduleCheck({ timeline }) {
                   );
                 })}
               </svg>
-
               <div className="absolute inset-[25%] rounded-full bg-white shadow-md flex items-center justify-center flex-col z-20 border-8 border-slate-50">
                 <span className="text-sm font-bold text-slate-400">Day {currentDayIndex + 1}</span>
               </div>
