@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 
+// --- (도우미 함수) 옛날 데이터(객체)든 최신 데이터(글자)든 완벽하게 숫자로 변환 ---
 const parseSafeTimeData = (timeData) => {
   if (!timeData) return { h: 0, m: 0, str: 'AM 12:00' };
   
+  // 1. 옛날 데이터 방식 (객체 형태)
   if (typeof timeData === 'object') {
     let h = parseInt(timeData.hour) || 0;
     const m = parseInt(timeData.minute || timeData.min) || 0;
@@ -14,6 +16,7 @@ const parseSafeTimeData = (timeData) => {
     return { h, m, str };
   }
   
+  // 2. 최신 데이터 방식 (문자열 형태)
   if (typeof timeData === 'string') {
     const [ampm, rest] = timeData.split(' ');
     if (!rest || !rest.includes(':')) return { h: 0, m: 0, str: 'AM 12:00' };
@@ -64,6 +67,7 @@ export default function ScheduleCheck({ timeline }) {
   const currentItems = currentDayStr ? safeTimeline[currentDayStr] : [];
 
   const computedItems = currentItems.map((item) => {
+    // ⭐️ 어떤 쓰레기 데이터가 들어와도 안전하게 변환
     const s = parseSafeTimeData(item.startTime);
     const e = parseSafeTimeData(item.endTime);
     
@@ -136,12 +140,21 @@ export default function ScheduleCheck({ timeline }) {
                   
                   <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col hover:border-sky-200 transition-colors shadow-sm gap-3">
                     
-                    {/* ⭐️ 순서 변경: 시각 -> 구분 -> 별칭 -> (우측 끝에 소요시간) */}
+                    {/* ⭐️ 순서 변경: 시각(소요시간) -> 구분 -> 별칭 */}
                     <div className="flex items-center gap-4">
                       
-                      {/* 1. 시각 (크기 키움) */}
-                      <div className="w-[190px] shrink-0 text-center bg-white text-sky-700 py-2 rounded-xl font-black text-base shadow-sm border border-sky-100">
-                        {item.computedStartStr} <span className="text-sky-300 mx-1">~</span> {item.computedEndStr}
+                      {/* 1. 세련되게 바뀐 시각 영역 (+ ()소요시간 추가) */}
+                      <div className="w-[280px] shrink-0 flex items-center gap-3 bg-white text-slate-900 p-3 rounded-xl border border-slate-100 shadow-inner">
+                        <span className="text-sky-400 text-lg">🕒</span>
+                        <div className="flex-1 flex items-baseline gap-2">
+                          <span className="text-lg font-black text-sky-800">
+                            {item.computedStartStr} <span className="text-slate-400 font-medium mx-0.5">~</span> {item.computedEndStr}
+                          </span>
+                          {/* 조그맣게 들어간 소요시간 */}
+                          <span className="text-xs font-medium text-slate-400 shrink-0">
+                            ({item.computedDurationStr})
+                          </span>
+                        </div>
                       </div>
 
                       {/* 2. 구분 */}
@@ -151,16 +164,11 @@ export default function ScheduleCheck({ timeline }) {
 
                       {/* 3. 별칭 */}
                       <div className="flex-1 min-w-[120px]">
-                        <h4 className="font-black text-slate-800 text-lg truncate">{item.alias || '이름 없음'}</h4>
-                      </div>
-
-                      {/* 4. 소요 시간 */}
-                      <div className="shrink-0 text-right text-sm font-bold text-slate-500">
-                        ⏱ {item.computedDurationStr}
+                        <h4 className="font-bold text-slate-800 text-lg truncate">{item.alias || '이름 없음'}</h4>
                       </div>
                     </div>
 
-                    {/* 메모 표시 */}
+                    {/* 메모 표시 (기존 유지) */}
                     {item.memo && (
                       <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-xl flex items-start gap-2">
                         <span className="text-rose-400 text-xs mt-0.5">💡</span>
@@ -179,6 +187,7 @@ export default function ScheduleCheck({ timeline }) {
           <div className="flex items-center justify-center py-6">
             <div className="relative w-[500px] h-[500px]">
               <div className="absolute inset-0 rounded-full border-[16px] border-slate-50 shadow-inner bg-white"></div>
+              
               <span className="absolute top-2 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 z-20">00:00</span>
               <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 z-20">12:00</span>
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 z-20">06:00</span>
