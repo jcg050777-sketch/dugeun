@@ -1,178 +1,155 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay, useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// ----------------------------------------------------
-// 0. 커스텀 시간 입력 컴포넌트 (AM/PM + 직접 입력)
-// ----------------------------------------------------
-function CustomTimePicker({ value, onChange }) {
-  const ampm = value?.ampm || 'AM';
-  const hour = value?.hour || '';
-  const min = value?.min || '00';
+const parseTime = (timeStr) => {
+  if (!timeStr) return { ampm: 'AM', hour: '12', minute: '00' };
+  const [ampm, rest] = timeStr.split(' ');
+  const [hour, minute] = rest.split(':');
+  return { ampm, hour, minute };
+};
 
-  const handleAmPm = () => onChange({ ...value, ampm: ampm === 'AM' ? 'PM' : 'AM' });
-  const handleHour = (e) => onChange({ ...value, hour: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) });
-  const handleMin = (e) => onChange({ ...value, min: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) });
+const formatTime = (ampm, hour, minute) => `${ampm} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+
+function SortableItem({ item, source }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
   return (
-    <div className="flex items-center bg-white border border-sky-200 rounded-lg px-3 py-2 shadow-sm">
-      <button type="button" onClick={handleAmPm} className="text-sm font-black text-sky-600 mr-2 hover:text-sky-800 w-7 text-left">
-        {ampm}
-      </button>
-      <input type="text" value={hour} onChange={handleHour} placeholder="12" className="w-6 text-center text-sm font-bold outline-none text-slate-700 bg-transparent placeholder:text-sky-200" />
-      <span className="text-sm text-sky-200 font-bold mx-1">:</span>
-      <input type="text" value={min} onChange={handleMin} placeholder="00" className="w-6 text-center text-sm font-bold outline-none text-slate-700 bg-transparent placeholder:text-sky-200" />
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="p-3 bg-white border border-slate-100 rounded-xl mb-2 shadow-sm flex items-center gap-3 cursor-grab hover:border-sky-300 transition-colors">
+      <span className="text-slate-300">⋮⋮</span>
+      <span className="text-sm font-bold text-slate-700 truncate">{item.alias}</span>
     </div>
   );
 }
 
-// ----------------------------------------------------
-// 1. 드래그 가능한 개별 아이템 컴포넌트
-// ----------------------------------------------------
-function SortableItem({ place, isTimelineItem, updateTimelineItem, deleteTimelineItem }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: place.id });
+function DroppableStorage({ items }) {
+  const { setNodeRef } = useDroppable({ id: 'storage' });
+  return (
+    <div ref={setNodeRef} className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-[200px]">
+      <SortableContext id="storage" items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+        {items.map(item => <SortableItem key={item.id} item={item} source="storage" />)}
+        {items.length === 0 && <div className="text-center text-slate-400 text-sm mt-10 font-bold border-2 border-dashed border-slate-200 p-6 rounded-xl">보관함이 비어있습니다.</div>}
+      </SortableContext>
+    </div>
+  );
+}
+
+function TimelineItem({ item, dayStr, handleUpdateItem, handleRemoveFromTimeline }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto' };
+
+  const start = parseTime(item.startTime);
+  const end = parseTime(item.endTime);
   
-  const style = { 
-    transform: CSS.Transform.toString(transform), 
-    transition,
-    zIndex: isDragging ? 50 : 'auto', 
+  // ⭐️ 메모창 토글 상태 (메모가 이미 있으면 처음부터 열려있도록 설정)
+  const [showMemo, setShowMemo] = useState(!!item.memo);
+
+  const updateTime = (field, part, value) => {
+    const current = parseTime(item[field]);
+    const updated = { ...current, [part]: value };
+    handleUpdateItem(dayStr, item.id, field, formatTime(updated.ampm, updated.hour, updated.minute));
   };
 
-  const inputType = place.inputType || '시간';
-
-  // [보관함] 아이템 디자인
-  if (!isTimelineItem) {
-    return (
-      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="p-3 bg-white border border-sky-100 rounded-xl text-sm font-bold text-slate-700 cursor-grab hover:bg-sky-50 shadow-sm flex items-center gap-2 relative">
-        <span className="text-sky-300">⋮⋮</span> {place.alias}
-      </div>
-    );
-  }
-
-  // [타임라인] 아이템 디자인
   return (
-    <div ref={setNodeRef} style={style} className="relative pl-6 py-2 group flex gap-4">
-      {/* 타임라인 파란 점선 */}
-      <div className="absolute left-[7px] top-6 bottom-[-16px] w-[2px] bg-sky-100 group-last:bg-transparent"></div>
-      <div className="absolute left-0 top-6 w-4 h-4 bg-white border-4 border-sky-400 rounded-full shadow-sm"></div>
-
-      {/* 카드 본체 (크고 시원하게 가로 배치) */}
-      <div className="flex-1 bg-white border border-sky-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all group-hover:border-sky-300 flex justify-between items-center gap-4">
+    <div ref={setNodeRef} style={style} className={`p-4 bg-white border rounded-2xl mb-3 shadow-sm transition-all group ${isDragging ? 'border-sky-400 opacity-80 scale-[1.02]' : 'border-sky-100 hover:border-sky-300'}`}>
+      <div className="flex items-center gap-3">
+        <div {...attributes} {...listeners} className="cursor-grab text-slate-300 hover:text-sky-500 px-1 touch-none">⋮⋮</div>
+        <span className="text-base font-black text-slate-800 flex-1 truncate">{item.alias}</span>
         
-        {/* 왼쪽: 잡는 곳 + 별칭 */}
-        <div className="flex items-center gap-3">
-          <div {...attributes} {...listeners} className="cursor-grab text-slate-300 hover:text-sky-500 touch-none py-2">
-            ⋮⋮
+        <div className="flex items-center gap-3 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+            <span className="text-xs font-bold text-slate-400 px-1">시각</span>
+            <select value={start.ampm} onChange={e => updateTime('startTime', 'ampm', e.target.value)} className="text-sm font-bold bg-white border border-slate-200 rounded p-1 outline-none"><option>AM</option><option>PM</option></select>
+            <input type="text" value={start.hour} onChange={e => updateTime('startTime', 'hour', e.target.value)} className="w-8 text-center text-sm font-bold border border-slate-200 rounded p-1 outline-none" />
+            <span className="text-slate-400 font-bold">:</span>
+            <input type="text" value={start.minute} onChange={e => updateTime('startTime', 'minute', e.target.value)} className="w-8 text-center text-sm font-bold border border-slate-200 rounded p-1 outline-none" />
+            
+            <span className="text-slate-300 font-black mx-1">~</span>
+            
+            <select value={end.ampm} onChange={e => updateTime('endTime', 'ampm', e.target.value)} className="text-sm font-bold bg-white border border-slate-200 rounded p-1 outline-none"><option>AM</option><option>PM</option></select>
+            <input type="text" value={end.hour} onChange={e => updateTime('endTime', 'hour', e.target.value)} className="w-8 text-center text-sm font-bold border border-slate-200 rounded p-1 outline-none" />
+            <span className="text-slate-400 font-bold">:</span>
+            <input type="text" value={end.minute} onChange={e => updateTime('endTime', 'minute', e.target.value)} className="w-8 text-center text-sm font-bold border border-slate-200 rounded p-1 outline-none" />
           </div>
-          <span className="font-bold text-slate-800 text-base">{place.alias}</span>
-        </div>
-
-        {/* 오른쪽: 시간 입력 컨트롤 영역 */}
-        <div className="flex items-center gap-3 bg-sky-50/50 p-2 rounded-xl border border-sky-100/50">
-          <button 
-            onClick={() => updateTimelineItem(place.id, 'inputType', inputType === '시간' ? '시각' : '시간')}
-            className="text-sm font-black bg-white border border-sky-200 text-sky-600 px-3 py-2 rounded-lg hover:bg-sky-100 transition-colors w-14 text-center shadow-sm"
-          >
-            {inputType}
-          </button>
           
-          {inputType === '시간' ? (
-            <div className="flex items-center gap-2">
-              <input 
-                type="number" min="0" step="0.5"
-                value={place.duration || ''} 
-                onChange={(e) => updateTimelineItem(place.id, 'duration', e.target.value)}
-                placeholder="숫자 입력" 
-                className="w-24 text-sm p-2 bg-white border border-sky-200 rounded-md outline-none focus:border-sky-500 text-sky-700 font-bold text-center shadow-sm"
-              />
-              <span className="text-sm font-bold text-slate-500">시간</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-sm font-bold text-sky-700">
-              <CustomTimePicker 
-                value={place.startTime || { ampm: 'AM', hour: '', min: '00' }} 
-                onChange={(val) => updateTimelineItem(place.id, 'startTime', val)} 
-              />
-              <span className="text-slate-300 mx-1">~</span>
-              <CustomTimePicker 
-                value={place.endTime || { ampm: 'PM', hour: '', min: '00' }} 
-                onChange={(val) => updateTimelineItem(place.id, 'endTime', val)} 
-              />
-            </div>
-          )}
-
-          <button onClick={() => deleteTimelineItem(place.id)} className="text-slate-300 hover:text-red-500 text-sm font-bold px-2 ml-2 transition-colors">
-            삭제
-          </button>
+          <div className="flex items-center gap-1">
+            {/* ⭐️ 메모 토글 버튼 추가 */}
+            <button onClick={() => setShowMemo(!showMemo)} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border ${showMemo || item.memo ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-sky-50 text-sky-600 border-sky-100 hover:bg-sky-100'}`}>메모</button>
+            <button onClick={() => handleRemoveFromTimeline(dayStr, item.id)} className="text-xs font-bold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-colors">삭제</button>
+          </div>
         </div>
-
       </div>
+
+      {/* ⭐️ 메모 입력칸 (센스있는 빨간색 + 기울임 꼴) */}
+      {showMemo && (
+        <div className="mt-3 pl-8 pr-2 flex items-center gap-2">
+          <span className="text-rose-400 text-sm">💡</span>
+          <input 
+            type="text" 
+            value={item.memo || ''} 
+            onChange={(e) => handleUpdateItem(dayStr, item.id, 'memo', e.target.value)} 
+            placeholder="준비물이나 주의사항을 적어주세요!" 
+            className="flex-1 bg-rose-50/50 border border-rose-100 p-2 rounded-lg text-sm italic font-bold text-rose-500 placeholder:text-rose-300 outline-none focus:border-rose-300 focus:bg-rose-50 transition-colors"
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-// ----------------------------------------------------
-// 2. 드롭 영역 (Day 보드)
-// ----------------------------------------------------
-function DroppableColumn({ dayStr, dateLabel, items, updateTimelineItem, deleteTimelineItem }) {
+function DroppableDay({ dayStr, dateLabel, items, handleUpdateItem, handleRemoveFromTimeline }) {
   const { setNodeRef } = useDroppable({ id: dayStr });
 
   return (
-    <div ref={setNodeRef} className="bg-[#f8fbff] rounded-3xl p-6 border border-sky-100 shadow-sm flex flex-col mb-8 last:mb-0">
-      <h4 className="font-black text-sky-700 border-b border-sky-200 pb-3 mb-4 flex items-end gap-2">
-        <span className="text-2xl">Day</span> 
-        <span className="text-sm font-bold text-slate-400 mb-1">{dateLabel}</span>
-      </h4>
-      
+    <div ref={setNodeRef} className="bg-sky-50/30 rounded-3xl p-6 border border-sky-100 mb-8 shadow-sm">
+      <h3 className="text-2xl font-black text-sky-800 mb-6 flex items-end gap-2">
+        Day <span className="text-sm font-bold text-slate-500 pb-1">{dateLabel}</span>
+      </h3>
       <SortableContext id={dayStr} items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col min-h-[150px]">
-          {items.length === 0 ? (
-            <div className="flex-1 border-2 border-dashed border-sky-200 bg-sky-50/50 rounded-2xl flex items-center justify-center text-sm font-bold text-slate-400 mt-2 pointer-events-none">
-              여기로 일정을 끌어오세요
-            </div>
-          ) : (
-            items.map(item => (
-              <SortableItem key={item.id} place={item} isTimelineItem={true} updateTimelineItem={(id, field, value) => updateTimelineItem(dayStr, id, field, value)} deleteTimelineItem={(id) => deleteTimelineItem(dayStr, id)} />
-            ))
-          )}
+        <div className="min-h-[100px] border-2 border-dashed border-sky-100 rounded-2xl p-4 bg-white/50">
+          {items.map(item => (
+            <TimelineItem key={item.id} item={item} dayStr={dayStr} handleUpdateItem={handleUpdateItem} handleRemoveFromTimeline={handleRemoveFromTimeline} />
+          ))}
+          {items.length === 0 && <div className="text-center text-slate-400 font-bold text-sm py-6">여기로 일정을 끌어오세요</div>}
         </div>
       </SortableContext>
     </div>
   );
 }
 
-// ----------------------------------------------------
-// 3. 메인 컴포넌트
-// ----------------------------------------------------
 export default function ScheduleEdit({ places, timeline, setTimeline }) {
-  const [startDate, setStartDate] = useState('2026-12-13');
-  const [endDate, setEndDate] = useState('2026-12-21');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [activeId, setActiveId] = useState(null);
-  
-  // 보관함 필터 상태
   const [filterCategory, setFilterCategory] = useState('전체');
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  const getDaysArray = () => {
-    if (!startDate || !endDate) return [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (start > end) return [];
-    const arr = [];
-    for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
-      const dayStr = dt.toISOString().split('T')[0];
-      const dateLabel = dt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
-      arr.push({ dayStr, dateLabel });
+  useEffect(() => {
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (start <= end) {
+        const newTimeline = { ...timeline };
+        let current = new Date(start);
+        const validDays = [];
+        while (current <= end) {
+          const dayStr = current.toISOString().split('T')[0];
+          validDays.push(dayStr);
+          if (!newTimeline[dayStr]) newTimeline[dayStr] = [];
+          current.setDate(current.getDate() + 1);
+        }
+        Object.keys(newTimeline).forEach(key => { if (!validDays.includes(key)) delete newTimeline[key]; });
+        setTimeline(newTimeline);
+      }
     }
-    return arr;
-  };
+  }, [startDate, endDate]);
 
-  const days = getDaysArray();
-  
-  // 카테고리 필터 적용된 보관함 리스트
-  const filteredPlaces = places.filter(p => filterCategory === '전체' || p.category === filterCategory);
+  const assignedIds = Object.values(timeline).flat().map(item => item.id);
+  const storageItems = places.filter(p => !assignedIds.includes(p.id));
+  const filteredStorageItems = filterCategory === '전체' ? storageItems : storageItems.filter(p => p.category === filterCategory);
 
   const handleDragStart = (event) => setActiveId(event.active.id);
 
@@ -181,144 +158,123 @@ export default function ScheduleEdit({ places, timeline, setTimeline }) {
     setActiveId(null);
     if (!over) return;
 
-    const activeIdVal = active.id;
-    const overIdVal = over.id;
+    const sourceId = active.id;
+    const targetContainer = over.id;
 
     let sourceContainer = 'storage';
-    for (const day of days) {
-      if (timeline[day.dayStr]?.find(i => i.id === activeIdVal)) {
-        sourceContainer = day.dayStr;
-        break;
-      }
+    if (Object.keys(timeline).some(day => timeline[day].find(i => i.id === sourceId))) {
+      sourceContainer = Object.keys(timeline).find(day => timeline[day].find(i => i.id === sourceId));
     }
 
-    let targetContainer = 'storage';
-    if (days.find(d => d.dayStr === overIdVal)) {
-      targetContainer = overIdVal; 
-    } else {
-      for (const day of days) {
-        if (timeline[day.dayStr]?.find(i => i.id === overIdVal)) {
-          targetContainer = day.dayStr;
-          break;
-        }
-      }
+    const isTargetDay = Object.keys(timeline).includes(targetContainer);
+    let realTargetContainer = targetContainer;
+    
+    if (!isTargetDay && targetContainer !== 'storage') {
+      realTargetContainer = Object.keys(timeline).find(day => timeline[day].find(i => i.id === targetContainer));
     }
 
-    if (sourceContainer === 'storage' && targetContainer !== 'storage') {
-      const placeToAdd = places.find(p => p.id === activeIdVal);
-      if (placeToAdd) {
-        const newItem = {
-          ...placeToAdd,
-          id: `${placeToAdd.id}_${Date.now()}`,
-          inputType: '시간', duration: '', startTime: { ampm: 'AM', hour: '', min: '00' }, endTime: { ampm: 'PM', hour: '', min: '00' }
-        };
-        setTimeline(prev => ({ ...prev, [targetContainer]: [...(prev[targetContainer] || []), newItem] }));
-      }
-      return;
-    }
+    if (!realTargetContainer) return;
 
-    if (sourceContainer !== 'storage' && targetContainer !== 'storage') {
+    if (sourceContainer === 'storage' && realTargetContainer !== 'storage') {
+      const place = places.find(p => p.id === sourceId);
+      const newItem = { ...place, startTime: 'PM 12:00', endTime: 'PM 01:00', memo: '' };
+      setTimeline(prev => ({
+        ...prev,
+        [realTargetContainer]: [...prev[realTargetContainer], newItem]
+      }));
+    } 
+    else if (sourceContainer !== 'storage' && realTargetContainer === 'storage') {
+      setTimeline(prev => ({
+        ...prev,
+        [sourceContainer]: prev[sourceContainer].filter(i => i.id !== sourceId)
+      }));
+    }
+    else if (sourceContainer !== 'storage' && realTargetContainer !== 'storage') {
       setTimeline(prev => {
-        const sourceItems = [...(prev[sourceContainer] || [])];
-        const targetItems = sourceContainer === targetContainer ? sourceItems : [...(prev[targetContainer] || [])];
-
-        const sourceIndex = sourceItems.findIndex(i => i.id === activeIdVal);
+        const sourceItems = [...prev[sourceContainer]];
+        const targetItems = sourceContainer === realTargetContainer ? sourceItems : [...prev[realTargetContainer]];
+        
+        const sourceIndex = sourceItems.findIndex(i => i.id === sourceId);
         const [movedItem] = sourceItems.splice(sourceIndex, 1);
+        
+        if (targetContainer !== realTargetContainer) {
+          const targetIndex = targetItems.findIndex(i => i.id === targetContainer);
+          targetItems.splice(targetIndex, 0, movedItem);
+        } else {
+          targetItems.push(movedItem);
+        }
 
-        const targetIndex = targetItems.findIndex(i => i.id === overIdVal);
-        if (targetIndex >= 0) targetItems.splice(targetIndex, 0, movedItem);
-        else targetItems.push(movedItem);
-
-        return { ...prev, [sourceContainer]: sourceItems, [targetContainer]: targetItems };
+        return {
+          ...prev,
+          [sourceContainer]: sourceItems,
+          [realTargetContainer]: targetItems
+        };
       });
     }
   };
 
-  const updateTimelineItem = (dayStr, itemId, field, value) => setTimeline(prev => ({ ...prev, [dayStr]: prev[dayStr].map(item => item.id === itemId ? { ...item, [field]: value } : item) }));
-  const deleteTimelineItem = (dayStr, itemId) => setTimeline(prev => ({ ...prev, [dayStr]: prev[dayStr].filter(item => item.id !== itemId) }));
+  const handleUpdateItem = (dayStr, itemId, field, value) => {
+    setTimeline(prev => ({
+      ...prev,
+      [dayStr]: prev[dayStr].map(item => item.id === itemId ? { ...item, [field]: value } : item)
+    }));
+  };
 
-  const activeItem = places.find(p => p.id === activeId) || Object.values(timeline).flat().find(p => p.id === activeId);
+  const handleRemoveFromTimeline = (dayStr, itemId) => {
+    setTimeline(prev => ({
+      ...prev,
+      [dayStr]: prev[dayStr].filter(item => item.id !== itemId)
+    }));
+  };
+
+  const activePlace = activeId ? places.find(p => p.id === activeId) || Object.values(timeline).flat().find(p => p.id === activeId) : null;
 
   return (
-    <div className="flex flex-col gap-6 relative">
-      
-      {/* ⭐️ 틀 고정 (Excel 스타일) - 배경색과 동일한 보호막 씌우기 */}
-      <div className="sticky top-[136px] z-30 bg-[#fcfdff] pt-2 pb-4 -mx-2 px-2">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-sky-100 flex flex-wrap items-center gap-6">
-          <h3 className="font-bold text-sky-700 text-lg">🗓️ 여행 기간 설정</h3>
-          <div className="flex items-center gap-3">
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2.5 bg-sky-50 border border-sky-100 rounded-lg outline-none focus:border-sky-400 text-sm font-bold text-slate-700" />
-            <span className="text-slate-400 font-bold">~</span>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2.5 bg-sky-50 border border-sky-100 rounded-lg outline-none focus:border-sky-400 text-sm font-bold text-slate-700" />
-          </div>
+    <div className="flex flex-col gap-8 pb-20">
+      <div className="bg-white p-6 rounded-3xl shadow-sm border border-sky-100 flex items-center gap-6 sticky top-36 z-30">
+        <h3 className="text-lg font-black text-sky-700 flex items-center gap-2"><span>🗓️</span> 여행 기간 설정</h3>
+        <div className="flex items-center gap-3">
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-sky-50 border border-sky-100 p-2.5 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-sky-400" />
+          <span className="text-slate-300 font-bold">~</span>
+          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-sky-50 border border-sky-100 p-2.5 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-sky-400" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex flex-col lg:flex-row gap-8 items-start relative">
           
-          <div className="lg:col-span-1">
-            {/* 보관함 자체 스크롤 설정 */}
-            <div className="bg-white rounded-3xl shadow-sm border border-sky-100 sticky top-[245px] z-20 max-h-[calc(100vh-270px)] flex flex-col">
-              <div className="p-6 pb-4 border-b border-sky-50 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-slate-800 flex items-center gap-2">🗂️ 보관함</h3>
-                
-                {/* ⭐️ 보관함 필터 (구분) */}
-                <select 
-                  value={filterCategory} 
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="text-xs font-bold border border-sky-200 rounded-md p-1.5 outline-none text-sky-700 bg-sky-50"
-                >
-                  <option value="전체">전체 구분</option>
-                  <option value="체험">체험</option>
-                  <option value="식당">식당</option>
-                  <option value="교통">교통</option>
-                  <option value="관광">관광</option>
-                  <option value="기타">기타</option>
-                </select>
-              </div>
-              
-              <div className="p-6 pt-4 overflow-y-auto custom-scrollbar flex-1">
-                <SortableContext id="storage" items={filteredPlaces.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-3">
-                    {filteredPlaces.length === 0 ? (
-                      <div className="text-center text-xs text-slate-400 py-10">해당하는 일정이 없어요.</div>
-                    ) : (
-                      filteredPlaces.map(place => (
-                        <SortableItem key={place.id} place={place} isTimelineItem={false} />
-                      ))
-                    )}
-                  </div>
-                </SortableContext>
-              </div>
+          <div className="w-full lg:w-72 bg-white rounded-3xl shadow-sm border border-sky-100 p-6 flex flex-col h-[600px] sticky top-60 z-20 shrink-0">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black text-slate-700 flex items-center gap-2"><span>🗂️</span> 보관함</h3>
+              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="text-xs font-bold bg-sky-50 border border-sky-100 text-sky-700 p-1.5 rounded-lg outline-none">
+                <option value="전체">전체 구분</option>
+                <option value="체험">체험</option><option value="식당">식당</option><option value="교통">교통</option><option value="관광">관광</option><option value="기타">기타</option>
+              </select>
             </div>
+            <DroppableStorage items={filteredStorageItems} />
           </div>
 
-          <div className="lg:col-span-3 relative z-0">
-            {days.length === 0 ? (
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-sky-100 min-h-[500px] flex flex-col items-center justify-center text-slate-400 italic space-y-2">
-                <span className="text-4xl">✈️</span>
-                <p>위에서 여행 시작일과 종료일을 설정해주세요.</p>
+          <div className="flex-1 w-full relative z-10">
+            {Object.keys(timeline).length === 0 ? (
+              <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-sky-100 text-slate-400 font-bold flex flex-col items-center gap-4">
+                <span className="text-6xl">📅</span>
+                <p>상단에서 여행 기간을 설정하면<br/>타임라인 보드가 생성됩니다!</p>
               </div>
             ) : (
-              <div className="flex flex-col">
-                {days.map((day, idx) => (
-                  <DroppableColumn key={day.dayStr} dayStr={day.dayStr} dateLabel={`${idx + 1} (${day.dateLabel})`} items={timeline[day.dayStr] || []} updateTimelineItem={updateTimelineItem} deleteTimelineItem={deleteTimelineItem} />
-                ))}
-              </div>
+              Object.keys(timeline).sort().map((dayStr, idx) => {
+                const dateLabel = new Date(dayStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
+                return (
+                  <DroppableDay key={dayStr} dayStr={dayStr} dateLabel={`${idx + 1} (${dateLabel})`} items={timeline[dayStr]} handleUpdateItem={handleUpdateItem} handleRemoveFromTimeline={handleRemoveFromTimeline} />
+                );
+              })
             )}
           </div>
+        </div>
 
-          <DragOverlay>
-            {activeItem ? (
-              <div className="p-3 bg-white border-2 border-sky-400 rounded-xl text-sm font-bold text-sky-700 shadow-xl opacity-90 rotate-3 z-50 flex items-center gap-2">
-                <span className="text-sky-300">⋮⋮</span> {activeItem.alias}
-              </div>
-            ) : null}
-          </DragOverlay>
-
-        </DndContext>
-      </div>
+        <DragOverlay>
+          {activePlace ? <SortableItem item={activePlace} source="overlay" /> : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }

@@ -101,6 +101,14 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
     return colors[category] || colors['기타'];
   };
 
+  // ⭐️ 천 단위 콤마 추가 함수
+  const formatAmount = (val) => {
+    if (val === undefined || val === null || val === '') return '';
+    const parts = val.toString().split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  };
+
   if (availableDays.length === 0) {
     return (
       <div className="bg-white p-10 rounded-3xl shadow-sm border border-sky-100 min-h-[500px] flex flex-col items-center justify-center text-slate-400 italic space-y-4">
@@ -114,7 +122,6 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
   return (
     <div className="flex flex-col gap-8 relative pb-24">
       
-      {/* 상단 고정: 총 예상 비용 바 및 환율 입력 */}
       <div className="sticky top-[136px] z-30 bg-[#fcfdff] pt-2 pb-4 -mx-2 px-2">
         <div className="max-w-4xl mx-auto w-full">
           <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-6 rounded-3xl shadow-md flex items-center justify-between text-white border border-sky-400">
@@ -200,7 +207,6 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
 
                       <div className="flex flex-col gap-2 pl-12 pr-2">
                         {expensesToRender.map((exp) => {
-                          // ⭐️ 공통 클래스 및 색상 지정 (기본값: 회색 / 변경값: 초록색)
                           const isConfirmed = exp.isConfirmed;
                           const isKrw = (exp.currency || 'USD') === 'KRW';
                           
@@ -209,7 +215,6 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
 
                           return (
                             <div key={exp.id} className="flex items-center gap-2">
-                              {/* 1. 확정/예상 토큰 (기본 예상=회색, 확정=초록색) */}
                               <button 
                                 onClick={() => handleUpdateExpense(dayStr, item.id, exp.id, 'isConfirmed', !isConfirmed, exp.isPlaceholder)} 
                                 className={`shrink-0 text-[11px] font-black px-2 py-2.5 rounded-lg transition-colors w-14 text-center shadow-sm ${isConfirmed ? greenClass : grayClass}`}
@@ -217,7 +222,6 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
                                 {isConfirmed ? '확정' : '예상'}
                               </button>
                               
-                              {/* 2. 원/달러 토글 (기본 달러=회색, 원화=초록색) */}
                               <button 
                                 onClick={() => handleUpdateExpense(dayStr, item.id, exp.id, 'currency', isKrw ? 'USD' : 'KRW', exp.isPlaceholder)} 
                                 className={`shrink-0 text-[11px] font-black px-2 py-2.5 rounded-lg transition-colors w-14 text-center shadow-sm ${isKrw ? greenClass : grayClass}`}
@@ -225,7 +229,6 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
                                 {isKrw ? '₩ 원화' : '$ 달러'}
                               </button>
 
-                              {/* 3. 내용 입력 */}
                               <input 
                                 type="text" 
                                 value={exp.desc} 
@@ -234,13 +237,14 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
                                 className={`flex-1 p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-sky-400 text-sm font-bold text-slate-700 placeholder:text-slate-300 placeholder:font-normal shadow-sm ${isTransport ? 'text-indigo-700' : ''}`} 
                               />
                               
-                              {/* 4. 금액 입력 */}
                               <div className="relative shrink-0 flex items-center gap-2">
+                                {/* ⭐️ 입력값에서 콤마 제거 후 업데이트, 화면에는 콤마 포맷팅해서 보여주기 */}
                                 <input 
                                   type="text" 
-                                  value={exp.amount} 
+                                  value={formatAmount(exp.amount)} 
                                   onChange={(e) => { 
-                                    let val = e.target.value.replace(/[^0-9.]/g, ''); 
+                                    let rawVal = e.target.value.replace(/,/g, ''); // 콤마 제거
+                                    let val = rawVal.replace(/[^0-9.]/g, ''); // 숫자와 점만 허용
                                     const parts = val.split('.');
                                     if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
                                     handleUpdateExpense(dayStr, item.id, exp.id, 'amount', val, exp.isPlaceholder); 
@@ -253,7 +257,6 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
                                 </span>
                               </div>
 
-                              {/* 5. 삭제 버튼 */}
                               {(!exp.isPlaceholder || expensesToRender.length > 1) && (
                                 <button onClick={() => handleRemoveExpense(dayStr, item.id, exp.id)} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 ml-1" title="비용 항목 삭제">✕</button>
                               )}
