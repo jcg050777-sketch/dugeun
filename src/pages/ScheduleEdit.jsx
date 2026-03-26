@@ -3,7 +3,6 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// ⭐️ 데이터 변환기: 과거의 객체 데이터도 에러 없이 받아냄
 const parseTimeSafe = (timeData) => {
   if (!timeData) return { ampm: 'AM', hour: '12', minute: '00' };
   if (typeof timeData === 'object') {
@@ -131,25 +130,46 @@ export default function ScheduleEdit({ places, timeline, setTimeline }) {
   const safeTimeline = timeline || {};
   const safePlaces = places || [];
 
+  // ⭐️ 1. 페이지 로드 시 기존 데이터를 기반으로 날짜 박스 채우기
   useEffect(() => {
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (start <= end) {
-        const newTimeline = { ...safeTimeline };
-        let current = new Date(start);
-        const validDays = [];
-        while (current <= end) {
-          const dayStr = current.toISOString().split('T')[0];
-          validDays.push(dayStr);
-          if (!newTimeline[dayStr] || !Array.isArray(newTimeline[dayStr])) newTimeline[dayStr] = [];
-          current.setDate(current.getDate() + 1);
-        }
-        Object.keys(newTimeline).forEach(key => { if (!validDays.includes(key)) delete newTimeline[key]; });
-        setTimeline(newTimeline);
-      }
+    const keys = Object.keys(safeTimeline).sort();
+    if (keys.length > 0) {
+      if (!startDate) setStartDate(keys[0]);
+      if (!endDate) setEndDate(keys[keys.length - 1]);
     }
-  }, [startDate, endDate]);
+  }, []);
+
+  // ⭐️ 2. 수동 적용 버튼 클릭 시 데이터 안전하게 이전시키기
+  const handleApplyDates = () => {
+    if (!startDate || !endDate) return alert('시작일과 종료일을 모두 선택해주세요.');
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start > end) return alert('종료일이 시작일보다 빠를 수 없습니다.');
+
+    const validDays = [];
+    let current = new Date(start);
+    while (current <= end) {
+      validDays.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    const newTimeline = {};
+    validDays.forEach(day => newTimeline[day] = []);
+
+    // 기존 데이터 순서대로 채워 넣기 (1일 차 -> 새 1일 차, 남는 건 마지막 날에 몰아넣기)
+    const oldKeys = Object.keys(safeTimeline).sort();
+    oldKeys.forEach((oldDay, idx) => {
+      const items = safeTimeline[oldDay] || [];
+      if (idx < validDays.length) {
+        newTimeline[validDays[idx]].push(...items);
+      } else {
+        newTimeline[validDays[validDays.length - 1]].push(...items);
+      }
+    });
+
+    setTimeline(newTimeline);
+    alert('✅ 여행 기간이 적용되었습니다!\n(기존에 등록된 일정은 순서대로 재배치되었습니다.)');
+  };
 
   const assignedIds = Object.values(safeTimeline).flat().filter(Boolean).map(item => item.id);
   const storageItems = safePlaces.filter(p => p && !assignedIds.includes(p.id));
@@ -221,20 +241,20 @@ export default function ScheduleEdit({ places, timeline, setTimeline }) {
 
   return (
     <div className="flex flex-col gap-8 pb-20">
-      {/* ⭐️ 기간 설정 박스는 위로 스크롤 되도록 Sticky 제거 (자연스럽게 스크롤됨) */}
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-sky-100 flex items-center gap-6">
+      <div className="bg-white p-6 rounded-3xl shadow-sm border border-sky-100 flex flex-col md:flex-row items-center gap-6 justify-between">
         <h3 className="text-lg font-black text-sky-700 flex items-center gap-2"><span>🗓️</span> 여행 기간 설정</h3>
         <div className="flex items-center gap-3">
           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-sky-50 border border-sky-100 p-2.5 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-sky-400" />
           <span className="text-slate-300 font-bold">~</span>
           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-sky-50 border border-sky-100 p-2.5 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-sky-400" />
+          {/* ⭐️ 적용하기 버튼 추가 */}
+          <button onClick={handleApplyDates} className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-sm transition-colors ml-2">적용하기</button>
         </div>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col lg:flex-row gap-8 items-start relative">
           
-          {/* ⭐️ 보관함만 왼쪽에서 딱! 고정되도록 top 위치 교정 */}
           <div className="w-full lg:w-72 bg-white rounded-3xl shadow-sm border border-sky-100 p-6 flex flex-col h-[600px] sticky top-[136px] z-20 shrink-0">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-black text-slate-700 flex items-center gap-2"><span>🗂️</span> 보관함</h3>
@@ -249,7 +269,7 @@ export default function ScheduleEdit({ places, timeline, setTimeline }) {
             {Object.keys(safeTimeline).length === 0 ? (
               <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-sky-100 text-slate-400 font-bold flex flex-col items-center gap-4">
                 <span className="text-6xl">📅</span>
-                <p>상단에서 여행 기간을 설정하면<br/>타임라인 보드가 생성됩니다!</p>
+                <p>상단에서 여행 기간을 설정하고 [적용하기]를 누르면<br/>타임라인 보드가 생성됩니다!</p>
               </div>
             ) : (
               Object.keys(safeTimeline).sort().map((dayStr, idx) => {

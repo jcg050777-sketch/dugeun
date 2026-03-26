@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 
-// ⭐️ 초강력 방어 로직: 옛날 데이터(객체)든 최신 데이터(글자)든 완벽하게 숫자로 변환
 const parseSafeTimeData = (timeData) => {
   if (!timeData) return { h: 0, m: 0, str: 'AM 12:00' };
   
-  // 1. 옛날 데이터 방식 (객체 형태)
   if (typeof timeData === 'object') {
     let h = parseInt(timeData.hour) || 0;
     const m = parseInt(timeData.minute || timeData.min) || 0;
@@ -16,7 +14,6 @@ const parseSafeTimeData = (timeData) => {
     return { h, m, str };
   }
   
-  // 2. 최신 데이터 방식 (문자열 형태)
   if (typeof timeData === 'string') {
     const [ampm, rest] = timeData.split(' ');
     if (!rest || !rest.includes(':')) return { h: 0, m: 0, str: 'AM 12:00' };
@@ -66,7 +63,6 @@ export default function ScheduleCheck({ timeline }) {
   const currentItems = currentDayStr ? safeTimeline[currentDayStr] : [];
 
   const computedItems = currentItems.map((item) => {
-    // ⭐️ 어떤 쓰레기 데이터가 들어와도 안전하게 변환
     const s = parseSafeTimeData(item.startTime);
     const e = parseSafeTimeData(item.endTime);
     
@@ -108,7 +104,6 @@ export default function ScheduleCheck({ timeline }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ⭐️ 상단 탭 딱 맞게 틀고정 */}
       <div className="bg-white p-4 rounded-3xl shadow-sm border border-sky-100 flex items-center justify-between sticky top-[136px] z-30">
         <button onClick={() => setCurrentDayIndex(prev => prev - 1)} disabled={currentDayIndex === 0} className={`px-4 py-2 rounded-xl font-black text-lg transition-colors ${currentDayIndex === 0 ? 'text-slate-200 cursor-not-allowed' : 'text-sky-600 hover:bg-sky-50'}`}>◀ 이전</button>
         <div className="text-center">
@@ -137,15 +132,29 @@ export default function ScheduleCheck({ timeline }) {
                     {idx !== computedItems.length - 1 && <div className="absolute top-6 w-0.5 h-12 bg-sky-200"></div>}
                     <div className="w-4 h-4 rounded-full border-4 border-sky-400 bg-white z-10"></div>
                   </div>
-                  <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between hover:border-sky-200 transition-colors shadow-sm gap-4">
-                    <div className="flex-1 min-w-[120px]">
-                      <h4 className="font-black text-slate-800 text-[15px] truncate">{item.alias || '이름 없음'}</h4>
+                  
+                  {/* ⭐️ 카드 부모를 flex-col 로 바꿔서 안에 리스트랑 메모가 위아래로 쌓이게 함 */}
+                  <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col hover:border-sky-200 transition-colors shadow-sm gap-3">
+                    
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-[120px]">
+                        <h4 className="font-black text-slate-800 text-[15px] truncate">{item.alias || '이름 없음'}</h4>
+                      </div>
+                      <div className={`w-16 shrink-0 text-center text-xs font-bold py-1 rounded-md border ${item.colorClass}`}>{item.category}</div>
+                      <div className="w-24 shrink-0 text-center text-sm font-bold text-slate-500">⏱ {item.computedDurationStr}</div>
+                      <div className="w-[180px] shrink-0 text-center bg-white text-sky-700 py-1.5 rounded-xl font-bold text-sm shadow-sm border border-sky-100">
+                        {item.computedStartStr} <span className="text-sky-300 mx-1">~</span> {item.computedEndStr}
+                      </div>
                     </div>
-                    <div className={`w-16 shrink-0 text-center text-xs font-bold py-1 rounded-md border ${item.colorClass}`}>{item.category}</div>
-                    <div className="w-24 shrink-0 text-center text-sm font-bold text-slate-500">⏱ {item.computedDurationStr}</div>
-                    <div className="w-[180px] shrink-0 text-center bg-white text-sky-700 py-1.5 rounded-xl font-bold text-sm shadow-sm border border-sky-100">
-                      {item.computedStartStr} <span className="text-sky-300 mx-1">~</span> {item.computedEndStr}
-                    </div>
+
+                    {/* ⭐️ 메모가 있을 경우에만 하단에 핑크색 박스로 표시 */}
+                    {item.memo && (
+                      <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-xl flex items-start gap-2">
+                        <span className="text-rose-400 text-xs mt-0.5">💡</span>
+                        <p className="text-sm italic font-bold text-rose-500">{item.memo}</p>
+                      </div>
+                    )}
+
                   </div>
                 </div>
               ))
