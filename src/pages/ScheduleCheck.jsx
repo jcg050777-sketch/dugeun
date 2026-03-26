@@ -42,6 +42,7 @@ const describeSector = (x, y, radius, startAngle, endAngle) => {
   return ["M", x, y, "L", start.x, start.y, "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y, "Z"].join(" ");
 };
 
+// ⭐️ 일정리스트와 색상 완벽 일치 (새로운 구분 추가 시 보라색 기본값 적용)
 const getCategoryColor = (category) => {
   const colors = {
     '체험': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', hex: '#fb923c' },
@@ -50,7 +51,7 @@ const getCategoryColor = (category) => {
     '관광': { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', hex: '#34d399' },
     '기타': { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', hex: '#94a3b8' },
   };
-  return colors[category] || colors['기타'];
+  return colors[category] || { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700', border: 'border-fuchsia-200', hex: '#d946ef' };
 };
 
 export default function ScheduleCheck({ timeline }) {
@@ -133,21 +134,33 @@ export default function ScheduleCheck({ timeline }) {
                     <div className="w-4 h-4 rounded-full border-4 border-sky-400 bg-white z-10"></div>
                   </div>
                   
-                  {/* ⭐️ 카드 부모를 flex-col 로 바꿔서 안에 리스트랑 메모가 위아래로 쌓이게 함 */}
                   <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col hover:border-sky-200 transition-colors shadow-sm gap-3">
                     
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-[120px]">
-                        <h4 className="font-black text-slate-800 text-[15px] truncate">{item.alias || '이름 없음'}</h4>
-                      </div>
-                      <div className={`w-16 shrink-0 text-center text-xs font-bold py-1 rounded-md border ${item.colorClass}`}>{item.category}</div>
-                      <div className="w-24 shrink-0 text-center text-sm font-bold text-slate-500">⏱ {item.computedDurationStr}</div>
-                      <div className="w-[180px] shrink-0 text-center bg-white text-sky-700 py-1.5 rounded-xl font-bold text-sm shadow-sm border border-sky-100">
+                    {/* ⭐️ 순서 변경: 시각 -> 구분 -> 별칭 -> (우측 끝에 소요시간) */}
+                    <div className="flex items-center gap-4">
+                      
+                      {/* 1. 시각 (크기 키움) */}
+                      <div className="w-[190px] shrink-0 text-center bg-white text-sky-700 py-2 rounded-xl font-black text-base shadow-sm border border-sky-100">
                         {item.computedStartStr} <span className="text-sky-300 mx-1">~</span> {item.computedEndStr}
+                      </div>
+
+                      {/* 2. 구분 */}
+                      <div className={`shrink-0 text-center text-xs font-black px-2.5 py-1.5 rounded-lg border ${item.colorClass}`}>
+                        {item.category}
+                      </div>
+
+                      {/* 3. 별칭 */}
+                      <div className="flex-1 min-w-[120px]">
+                        <h4 className="font-black text-slate-800 text-lg truncate">{item.alias || '이름 없음'}</h4>
+                      </div>
+
+                      {/* 4. 소요 시간 */}
+                      <div className="shrink-0 text-right text-sm font-bold text-slate-500">
+                        ⏱ {item.computedDurationStr}
                       </div>
                     </div>
 
-                    {/* ⭐️ 메모가 있을 경우에만 하단에 핑크색 박스로 표시 */}
+                    {/* 메모 표시 */}
                     {item.memo && (
                       <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-xl flex items-start gap-2">
                         <span className="text-rose-400 text-xs mt-0.5">💡</span>
