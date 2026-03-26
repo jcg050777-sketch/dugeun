@@ -2,10 +2,7 @@ import React, { useState, useRef } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
-
-const GOOGLE_MAPS_API_KEY = "AIzaSyB_p8m24A0KrDtyh4RKwTaMVm5jHisEcD8";
-const libraries = ['places'];
+import { Autocomplete } from '@react-google-maps/api'; // ⭐️ useJsApiLoader 삭제
 
 function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: place.id });
@@ -30,7 +27,7 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
           </p>
         ) : (
           <p className="text-slate-400 text-xs mt-1 flex items-center gap-1 italic">
-            <span>📍</span> 위치 미지정 (이전 동선 유지)
+            <span>📍</span> 위치 미지정
           </p>
         )}
       </div>
@@ -42,22 +39,16 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
   );
 }
 
-// ⭐️ props로 categories 받기
-const ScheduleList = ({ places, setPlaces, categories }) => {
-  // ⭐️ 전역 카테고리 데이터에서 이름 배열만 추출
+// ⭐️ googleMapsLoaded를 props로 받음
+const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
   const categoryNames = categories ? categories.map(c => c.name) : ['관광'];
   const FILTER_CATEGORIES = ['전체', ...categoryNames];
 
   const [form, setForm] = useState({ alias: '', category: categoryNames[0] || '관광', content: '', location: null });
   const [editId, setEditId] = useState(null);
-  
   const [filter, setFilter] = useState('전체');
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: libraries
-  });
+  // ⭐️ 기존 useJsApiLoader 로직 삭제
 
   const autocompleteRef = useRef(null);
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -120,45 +111,39 @@ const ScheduleList = ({ places, setPlaces, categories }) => {
   };
 
   const getCategoryColor = (category) => {
-    // 기본 카테고리는 예쁜 색상 적용, 새로 추가된 건 보라색 계열로 기본 지정
-    const colors = { 
-      '체험': 'bg-orange-100 text-orange-700 border-orange-200', 
-      '식당': 'bg-red-100 text-red-700 border-red-200', 
-      '교통': 'bg-indigo-100 text-indigo-700 border-indigo-200', 
-      '관광': 'bg-emerald-100 text-emerald-700 border-emerald-200', 
-      '기타': 'bg-slate-100 text-slate-700 border-slate-200' 
-    };
+    const colors = { '체험': 'bg-orange-100 text-orange-700 border-orange-200', '식당': 'bg-red-100 text-red-700 border-red-200', '교통': 'bg-indigo-100 text-indigo-700 border-indigo-200', '관광': 'bg-emerald-100 text-emerald-700 border-emerald-200', '기타': 'bg-slate-100 text-slate-700 border-slate-200' };
     return colors[category] || 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200';
   };
 
   const filteredPlaces = filter === '전체' ? places : places.filter(p => p.category === filter);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <section className="lg:col-span-1">
-        <div className="bg-white p-6 rounded-3xl shadow-lg border border-sky-100 sticky top-40">
+    // ⭐️ 레이아웃 해결: items-start 추가해서 왼쪽 칸이 안 길어지게 함
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start relative">
+      <section className="lg:col-span-1 sticky top-48"> {/* ⭐️ top 위치 살짝 조절 */}
+        <div className="bg-white p-6 rounded-3xl shadow-lg border border-sky-100">
           <h3 className="text-sky-700 text-xl font-bold mb-4 flex items-center gap-2"><span>📝</span> 등록</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">별칭 (목록 이름) <span className="text-red-500">*</span></label>
-              <input type="text" value={form.alias} onChange={(e) => setForm({...form, alias: e.target.value})} placeholder="ex) 오페라 하우스 야경" className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm" />
+              <input type="text" value={form.alias} onChange={(e) => setForm({...form, alias: e.target.value})} placeholder="ex) 오페라 하우스" className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">구분 <span className="text-red-500">*</span></label>
               <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm font-bold">
-                {/* ⭐️ 동적 카테고리 적용 */}
                 {categoryNames.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">내용 (할 일)</label>
-              <textarea value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="ex) 야경 배경으로 사진 찍기" className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm h-20 resize-none" />
+              <textarea value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="ex) 사진 찍기" className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm h-20 resize-none" />
             </div>
             <div className="relative">
-              <label className="block text-xs font-bold text-slate-500 mb-1">위치 (선택 안하면 이전 위치 유지)</label>
-              {isLoaded ? (
+              <label className="block text-xs font-bold text-slate-500 mb-1">위치 (구글 검색)</label>
+              {/* ⭐️ props로 받은 googleMapsLoaded 사용 */}
+              {googleMapsLoaded ? (
                 <Autocomplete onLoad={(autocomplete) => { autocompleteRef.current = autocomplete; }} onPlaceChanged={onPlaceChanged}>
-                  <input id="google-autocomplete-input" type="text" placeholder="검색 또는 비워두기" onChange={() => setForm({...form, location: null})} className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm" />
+                  <input id="google-autocomplete-input" type="text" placeholder="장소 검색" onChange={() => setForm({...form, location: null})} className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm" />
                 </Autocomplete>
               ) : (
                 <input type="text" placeholder="구글 맵 불러오는 중..." disabled className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-sm" />
@@ -174,12 +159,7 @@ const ScheduleList = ({ places, setPlaces, categories }) => {
               {editId ? '수정 완료' : '리스트에 추가하기'}
             </button>
             {editId && (
-              <button type="button" onClick={() => { 
-                setEditId(null); 
-                setForm({ alias: '', category: form.category, content: '', location: null }); 
-                const inputEl = document.getElementById('google-autocomplete-input'); 
-                if (inputEl) inputEl.value = ''; 
-              }} className="w-full bg-slate-200 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-300 transition-all mt-2">취소</button>
+              <button type="button" onClick={() => { setEditId(null); setForm({ alias: '', category: form.category, content: '', location: null }); const inputEl = document.getElementById('google-autocomplete-input'); if (inputEl) inputEl.value = ''; }} className="w-full bg-slate-200 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-300 transition-all mt-2">취소</button>
             )}
           </form>
         </div>
@@ -187,24 +167,13 @@ const ScheduleList = ({ places, setPlaces, categories }) => {
 
       <section className="lg:col-span-2">
         <div className="bg-white p-8 rounded-3xl shadow-lg border border-sky-100 min-h-[500px]">
-          
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-sky-100 pb-4 gap-4">
             <h3 className="text-xl font-bold text-slate-800 shrink-0">
               {filter === '전체' ? `총 ${places.length}개의 리스트` : `'${filter}' 리스트 (${filteredPlaces.length}개)`}
             </h3>
-            
             <div className="flex flex-wrap gap-1.5">
-              {/* ⭐️ 동적 필터 카테고리 적용 */}
               {FILTER_CATEGORIES.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setFilter(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    filter === cat 
-                      ? 'bg-sky-600 text-white shadow-md' 
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
-                  }`}
-                >
+                <button key={cat} onClick={() => setFilter(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filter === cat ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'}`}>
                   {cat}
                 </button>
               ))}

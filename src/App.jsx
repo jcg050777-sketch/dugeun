@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { useJsApiLoader } from '@react-google-maps/api'; // ⭐️ 여기서 불러옴
 
 import ScheduleList from './pages/ScheduleList';
 import ScheduleEdit from './pages/ScheduleEdit';
@@ -11,6 +12,10 @@ import ExpenseTrend from './pages/ExpenseTrend';
 import CategoryManage from './pages/CategoryManage';
 import BackupRestore from './pages/BackupRestore';
 
+// ⭐️ 구글 맵 설정 (App.jsx로 이동)
+const GOOGLE_MAPS_API_KEY = "AIzaSyB_p8m24A0KrDtyh4RKwTaMVm5jHisEcD8";
+const libraries = ['places'];
+
 const Navigation = () => {
   const location = useLocation();
   const path = location.pathname;
@@ -21,7 +26,7 @@ const Navigation = () => {
 
   return (
     <>
-      <header className="border-b border-sky-100 bg-white px-10 h-20 flex items-center justify-between sticky top-0 z-20">
+      <header className="border-b border-sky-100 bg-white px-10 h-20 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-16">
           <Link to="/" className="text-3xl font-black text-sky-600 tracking-tighter">Dugeun 💓</Link>
           <nav className="flex gap-10 text-lg font-bold mt-2">
@@ -32,7 +37,7 @@ const Navigation = () => {
         </div>
       </header>
 
-      <div className="bg-[#f8fbff] border-b border-sky-50 px-10 py-4 sticky top-20 z-10 shadow-sm">
+      <div className="bg-[#f8fbff] border-b border-sky-50 px-10 py-4 sticky top-20 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto flex gap-10 text-[15px] font-bold">
           {activeMain === '여행 일정' && (
             <>
@@ -61,37 +66,31 @@ const Navigation = () => {
   );
 };
 
-// ⭐️ 로컬 스토리지에서 데이터 불러오는 헬퍼 함수
 const getInitialData = (key, initialValue) => {
   const storedData = localStorage.getItem(key);
   if (storedData) {
-    try {
-      return JSON.parse(storedData);
-    } catch (e) {
-      return initialValue;
-    }
+    try { return JSON.parse(storedData); } catch (e) { return initialValue; }
   }
   return initialValue;
 };
 
 function App() {
-  // ⭐️ 초기값을 로컬 스토리지에서 가져오도록 수정
   const [places, setPlaces] = useState(() => getInitialData('dugeun_places', [
-    { id: '1', alias: '오페라 하우스', category: '관광', content: '외부 사진 촬영', location: null },
+    { id: '1', alias: '오페라 하우스', category: '관광', content: '외부 사진 촬영', location: { name: '시드니 오페라 하우스', address: 'Bennelong Point, Sydney NSW 2000 오스트레일리아', lat: -33.8567844, lng: 151.2152967 } },
   ]));
-
   const [timeline, setTimeline] = useState(() => getInitialData('dugeun_timeline', {}));
   const [exchangeRate, setExchangeRate] = useState(() => getInitialData('dugeun_exchangeRate', 1400)); 
-
   const [categories, setCategories] = useState(() => getInitialData('dugeun_categories', [
-    { id: 'cat_1', name: '체험' },
-    { id: 'cat_2', name: '식당' },
-    { id: 'cat_3', name: '교통' },
-    { id: 'cat_4', name: '관광' },
-    { id: 'cat_5', name: '기타' }
+    { id: 'cat_1', name: '체험' }, { id: 'cat_2', name: '식당' }, { id: 'cat_3', name: '교통' }, { id: 'cat_4', name: '관광' }, { id: 'cat_5', name: '기타' }
   ]));
 
-  // ⭐️ 데이터가 변경될 때마다 로컬 스토리지에 자동 저장
+  // ⭐️ 2단계: 여기서 구글 맵 API 딱 한 번만 로드!
+  const { isLoaded: googleMapsLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: libraries,
+  });
+
   useEffect(() => { localStorage.setItem('dugeun_places', JSON.stringify(places)); }, [places]);
   useEffect(() => { localStorage.setItem('dugeun_timeline', JSON.stringify(timeline)); }, [timeline]);
   useEffect(() => { localStorage.setItem('dugeun_exchangeRate', JSON.stringify(exchangeRate)); }, [exchangeRate]);
@@ -99,28 +98,20 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#fcfdff] text-slate-900 font-sans pb-20">
+      <div className="min-h-screen bg-[#fcfdff] text-slate-900 font-sans pb-20 relative">
         <Navigation />
-        <main className="max-w-6xl mx-auto p-8">
+        <main className="max-w-6xl mx-auto p-8 relative z-10">
           <Routes>
-            <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} categories={categories} />} />
+            {/* ⭐️ 3단계: 로드된 결과를 props로 넘겨줌 */}
+            <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} categories={categories} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/edit" element={<ScheduleEdit places={places} timeline={timeline} setTimeline={setTimeline} />} />
-            <Route path="/schedule/route" element={<RouteCheck timeline={timeline} />} />
+            <Route path="/schedule/route" element={<RouteCheck timeline={timeline} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/check" element={<ScheduleCheck timeline={timeline} />} />
-            
             <Route path="/expense/total" element={<ExpenseTotal timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} />} />
             <Route path="/expense/transport" element={<TransportCalc timeline={timeline} exchangeRate={exchangeRate} />} />
             <Route path="/expense/trend" element={<ExpenseTrend timeline={timeline} exchangeRate={exchangeRate} categories={categories} />} />
-            
             <Route path="/advanced/category" element={<CategoryManage categories={categories} setCategories={setCategories} />} />
-            <Route path="/advanced/backup" element={
-              <BackupRestore 
-                places={places} setPlaces={setPlaces} 
-                timeline={timeline} setTimeline={setTimeline} 
-                exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} 
-                categories={categories} setCategories={setCategories} 
-              />
-            } />
+            <Route path="/advanced/backup" element={<BackupRestore places={places} setPlaces={setPlaces} timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} categories={categories} setCategories={setCategories} />} />
           </Routes>
         </main>
       </div>

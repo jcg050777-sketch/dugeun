@@ -1,26 +1,18 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, Polyline } from '@react-google-maps/api';
+import { GoogleMap, Marker, Polyline } from '@react-google-maps/api'; // ⭐️ useJsApiLoader 삭제
 
-// ⭐️ 여기에 구글 맵 API 키를 똑같이 넣어줘!
-const GOOGLE_MAPS_API_KEY = "AIzaSyB_p8m24A0KrDtyh4RKwTaMVm5jHisEcD8";
-
-// ⭐️ 핵심 해결법: ScheduleList랑 똑같이 libraries 옵션을 맞춰줌!
-const libraries = ['places'];
+// ⭐️ API 키, libraries 설정 삭제
 
 const mapContainerStyle = { width: '100%', height: '100%', borderRadius: '1.5rem' };
-const defaultCenter = { lat: -33.8688, lng: 151.2093 }; // 시드니
+const defaultCenter = { lat: -33.8688, lng: 151.2093 }; 
 
-export default function RouteCheck({ timeline }) {
+// ⭐️ googleMapsLoaded를 props로 받음
+export default function RouteCheck({ timeline, googleMapsLoaded }) {
   const availableDays = Object.keys(timeline).filter(day => timeline[day].length > 0).sort();
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const mapRef = useRef(null);
 
-  // ⭐️ 여기서 libraries 옵션을 추가해서 에러 해결!
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: libraries, 
-  });
+  // ⭐️ 기존 useJsApiLoader 로직 삭제
 
   const currentDay = availableDays[currentDayIndex];
   const items = currentDay ? timeline[currentDay] : [];
@@ -28,13 +20,8 @@ export default function RouteCheck({ timeline }) {
   const validItems = items.filter(item => item.location && item.location.lat && item.location.lng);
   const pathCoordinates = validItems.map(item => ({ lat: item.location.lat, lng: item.location.lng }));
 
-  const onLoad = useCallback(function callback(map) {
-    mapRef.current = map;
-  }, []);
-
-  const onUnmount = useCallback(function callback(map) {
-    mapRef.current = null;
-  }, []);
+  const onLoad = useCallback(function callback(map) { mapRef.current = map; }, []);
+  const onUnmount = useCallback(function callback(map) { mapRef.current = null; }, []);
 
   useEffect(() => {
     if (mapRef.current && pathCoordinates.length > 0) {
@@ -69,44 +56,25 @@ export default function RouteCheck({ timeline }) {
   return (
     <div className="flex flex-col gap-6 relative pb-20">
       
-      <div className="flex items-center justify-between bg-white rounded-3xl shadow-sm border border-sky-100 p-4 sticky top-36 z-20">
-        <button 
-          onClick={() => setCurrentDayIndex(prev => Math.max(0, prev - 1))}
-          disabled={currentDayIndex === 0}
-          className="px-4 py-2 text-sm font-bold text-sky-600 disabled:text-slate-300 transition-colors flex items-center gap-1"
-        >
-          ◀ 이전 날짜
-        </button>
+      <div className="flex items-center justify-between bg-white rounded-3xl shadow-sm border border-sky-100 p-4 sticky top-48 z-20"> {/* ⭐️ top 위치 조절 */}
+        <button onClick={() => setCurrentDayIndex(prev => Math.max(0, prev - 1))} disabled={currentDayIndex === 0} className="px-4 py-2 text-sm font-bold text-sky-600 disabled:text-slate-300">◀ 이전</button>
         <div className="text-center">
           <h2 className="text-xl font-black text-sky-800">Day {currentDayIndex + 1}</h2>
           <span className="text-xs font-bold text-slate-400">{formattedDate}</span>
         </div>
-        <button 
-          onClick={() => setCurrentDayIndex(prev => Math.min(availableDays.length - 1, prev + 1))}
-          disabled={currentDayIndex === availableDays.length - 1}
-          className="px-4 py-2 text-sm font-bold text-sky-600 disabled:text-slate-300 transition-colors flex items-center gap-1"
-        >
-          다음 날짜 ▶
-        </button>
+        <button onClick={() => setCurrentDayIndex(prev => Math.min(availableDays.length - 1, prev + 1))} disabled={currentDayIndex === availableDays.length - 1} className="px-4 py-2 text-sm font-bold text-sky-600 disabled:text-slate-300">다음 ▶</button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         <div className="bg-white rounded-3xl shadow-sm border border-sky-100 p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4">
-          <h3 className="text-center text-sky-700 font-black mb-4 flex items-center justify-center gap-2">
-            <span>📍</span> 이동 순서
-          </h3>
-          
+          <h3 className="text-center text-sky-700 font-black mb-4">📍 이동 순서</h3>
           {validItems.length === 0 ? (
-            <div className="text-center text-slate-400 text-sm py-10 font-bold bg-slate-50 rounded-xl">
-              구글 자동완성으로 위치가 지정된<br/>일정이 없습니다.
-            </div>
+            <div className="text-center text-slate-400 text-sm py-10 font-bold bg-slate-50 rounded-xl">위치가 지정된 일정이 없습니다.</div>
           ) : (
             <div className="relative border-l-2 border-sky-100 ml-4 space-y-6 pb-4">
               {validItems.map((item, idx) => (
                 <div key={item.id} className="relative pl-6">
-                  <div className="absolute -left-[13px] top-1 w-6 h-6 rounded-full bg-sky-500 text-white font-black flex items-center justify-center text-[10px] shadow-sm ring-4 ring-white">
-                    {idx + 1}
-                  </div>
+                  <div className="absolute -left-[13px] top-1 w-6 h-6 rounded-full bg-sky-500 text-white font-black flex items-center justify-center text-[10px] shadow-sm ring-4 ring-white">{idx + 1}</div>
                   <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
                     <h4 className="font-bold text-slate-800 text-sm group-hover:text-sky-600 transition-colors">{item.alias}</h4>
                     <p className="text-[10px] text-slate-400 truncate mt-1">{item.location.address}</p>
@@ -118,7 +86,8 @@ export default function RouteCheck({ timeline }) {
         </div>
 
         <div className="lg:col-span-2 bg-slate-100 rounded-3xl shadow-inner border border-sky-100 overflow-hidden relative">
-          {!isLoaded ? (
+          {/* ⭐️ props로 받은 googleMapsLoaded 사용 */}
+          {!googleMapsLoaded ? (
             <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold">지도 불러오는 중...</div>
           ) : (
             <GoogleMap
@@ -130,18 +99,10 @@ export default function RouteCheck({ timeline }) {
               options={{ disableDefaultUI: true, zoomControl: true }}
             >
               {validItems.map((item, idx) => (
-                <Marker 
-                  key={item.id} 
-                  position={{ lat: item.location.lat, lng: item.location.lng }} 
-                  label={{ text: String(idx + 1), color: 'white', fontWeight: 'bold' }}
-                />
+                <Marker key={item.id} position={{ lat: item.location.lat, lng: item.location.lng }} label={{ text: String(idx + 1), color: 'white', fontWeight: 'bold' }} />
               ))}
-
               {pathCoordinates.length > 1 && (
-                <Polyline 
-                  path={pathCoordinates} 
-                  options={{ strokeColor: '#0ea5e9', strokeOpacity: 0.8, strokeWeight: 4 }} 
-                />
+                <Polyline path={pathCoordinates} options={{ strokeColor: '#0ea5e9', strokeOpacity: 0.8, strokeWeight: 4 }} />
               )}
             </GoogleMap>
           )}
