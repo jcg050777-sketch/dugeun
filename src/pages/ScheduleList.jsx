@@ -11,29 +11,31 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-4 p-4 border border-sky-50 rounded-2xl hover:shadow-md hover:border-sky-200 transition-all bg-white group relative z-10">
       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-sky-500 px-2 touch-none">⋮⋮</div>
-      <div className="flex-1">
+      
+      {/* ⭐️ min-w-0 추가: 내용이 길어질 때 레이아웃이 안 깨지고 말줄임표(...)가 잘 작동하게 함 */}
+      <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className={`text-[10px] font-black px-2 py-1 rounded-md border ${getCategoryColor(place.category)}`}>{place.category}</span>
-          <h4 className="font-bold text-lg text-slate-800">{place.alias}</h4>
+          <span className={`text-[10px] font-black px-2 py-1 rounded-md border shrink-0 ${getCategoryColor(place.category)}`}>{place.category}</span>
+          <h4 className="font-bold text-lg text-slate-800 truncate">{place.alias}</h4>
         </div>
-        <p className="text-slate-500 text-sm">{place.content}</p>
+        <p className="text-slate-500 text-sm truncate">{place.content}</p>
         
-        {/* ⭐️ 리스트 화면에서도 메모가 보이도록 추가! */}
         {place.memo && (
-          <p className="text-[12px] italic font-black text-rose-500 mt-1 flex items-center gap-1">
-            <span className="drop-shadow-sm">📌</span> {place.memo}
+          <p className="text-[12px] italic font-black text-rose-500 mt-1 flex items-center gap-1 truncate">
+            <span className="drop-shadow-sm shrink-0">📌</span> <span className="truncate">{place.memo}</span>
           </p>
         )}
 
         {place.location ? (
-          <p className="text-slate-500 text-xs mt-1.5 flex items-center gap-1">
-            <span>📍</span> <span className="font-bold text-sky-700">{place.location.name}</span> <span className="text-slate-300 truncate">({place.location.address})</span>
+          <p className="text-slate-500 text-xs mt-1.5 flex items-center gap-1 truncate">
+            <span className="shrink-0">📍</span> <span className="font-bold text-sky-700 shrink-0">{place.location.name}</span> <span className="text-slate-300 truncate">({place.location.address})</span>
           </p>
         ) : (
-          <p className="text-slate-400 text-xs mt-1.5 flex items-center gap-1 italic"><span>📍</span> 위치 미지정</p>
+          <p className="text-slate-400 text-xs mt-1.5 flex items-center gap-1 italic shrink-0"><span>📍</span> 위치 미지정</p>
         )}
       </div>
-      <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      
+      <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button onClick={() => handleEdit(place)} className="text-xs bg-sky-50 text-sky-600 px-3 py-1 rounded hover:bg-sky-100 font-bold">수정</button>
         <button onClick={() => handleDelete(place.id)} className="text-xs bg-red-50 text-red-600 px-3 py-1 rounded hover:bg-red-100 font-bold">삭제</button>
       </div>
@@ -45,7 +47,6 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
   const categoryNames = categories ? categories.map(c => c.name) : ['관광'];
   const FILTER_CATEGORIES = ['전체', ...categoryNames];
 
-  // ⭐️ form 상태에 memo 추가
   const [form, setForm] = useState({ alias: '', category: categoryNames[0] || '관광', content: '', memo: '', location: null });
   const [editId, setEditId] = useState(null);
   const [filter, setFilter] = useState('전체');
@@ -87,7 +88,6 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
     } else {
       setPlaces([...places, { ...form, id: Date.now().toString() }]);
     }
-    // ⭐️ 폼 초기화 시 memo도 비워줌
     setForm({ alias: '', category: form.category, content: '', memo: '', location: null });
     const inputEl = document.getElementById('google-autocomplete-input');
     if (inputEl) inputEl.value = '';
@@ -130,7 +130,6 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
               <textarea value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="ex) 야경 배경으로 사진 찍기" className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm h-16 resize-none custom-scrollbar" />
             </div>
             
-            {/* ⭐️ 메모 입력칸 추가 (내용 바로 밑) */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1"><span className="text-[10px]">📌</span> 메모 (일정 체크용)</label>
               <input type="text" value={form.memo} onChange={(e) => setForm({...form, memo: e.target.value})} placeholder="ex) 여권 필수, 예약 바우처 확인" className="w-full p-3 bg-rose-50 border border-rose-100 rounded-xl outline-none focus:border-rose-300 text-sm italic font-bold text-rose-500 placeholder:text-rose-300 placeholder:font-normal" />
@@ -164,13 +163,16 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
 
       <section className="lg:col-span-2">
         <div className="bg-white p-8 rounded-3xl shadow-lg border border-sky-100 min-h-[500px]">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-sky-100 pb-4 gap-4">
-            <h3 className="text-xl font-bold text-slate-800 shrink-0">
+          
+          {/* ⭐️ 제목(1층)과 버튼들(2층)을 완전히 분리해서 절대 들썩거리지 않게 고정! */}
+          <div className="flex flex-col gap-4 mb-6 border-b border-sky-100 pb-5">
+            <h3 className="text-xl font-black text-slate-800">
               {filter === '전체' ? `총 ${places.length}개의 리스트` : `'${filter}' 리스트 (${filteredPlaces.length}개)`}
             </h3>
-            <div className="flex flex-wrap gap-1.5">
+            
+            <div className="flex flex-wrap gap-2">
               {FILTER_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => setFilter(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filter === cat ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'}`}>
+                <button key={cat} onClick={() => setFilter(cat)} className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${filter === cat ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'}`}>
                   {cat}
                 </button>
               ))}

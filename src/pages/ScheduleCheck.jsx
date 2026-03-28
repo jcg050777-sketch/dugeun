@@ -8,6 +8,7 @@ const parseSafeTimeData = (timeData) => {
     const m = parseInt(timeData.minute || timeData.min) || 0;
     const ampm = timeData.ampm || 'AM';
     const str = `${ampm} ${String(timeData.hour || 12).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    
     if (ampm === 'PM' && h < 12) h += 12;
     if (ampm === 'AM' && h === 12) h = 0;
     return { h, m, str };
@@ -19,19 +20,13 @@ const parseSafeTimeData = (timeData) => {
     const [hourStr, minStr] = rest.split(':');
     let h = parseInt(hourStr) || 0;
     const m = parseInt(minStr) || 0;
+    
     if (ampm === 'PM' && h < 12) h += 12;
     if (ampm === 'AM' && h === 12) h = 0;
     return { h, m, str: timeData };
   }
   
   return { h: 0, m: 0, str: 'AM 12:00' };
-};
-
-const formatTimeStr = (h, m) => {
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  let hh = h % 12;
-  if (hh === 0) hh = 12;
-  return `${ampm} ${String(hh).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
 const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -67,32 +62,12 @@ export default function ScheduleCheck({ timeline }) {
   const currentDayStr = availableDays[currentDayIndex];
   const currentItems = currentDayStr ? safeTimeline[currentDayStr] : [];
 
-  // ⭐️ 톱니바퀴처럼 시간이 이어지는 기능 완벽 반영!
-  let currentRefH = 9;
-  let currentRefM = 0;
-
   const computedItems = currentItems.map((item) => {
-    let startH, startM, endH, endM;
-
-    if (item.inputType === '시간') {
-        startH = currentRefH;
-        startM = currentRefM;
-        const durMins = parseFloat(item.duration || 1) * 60;
-        const totalMins = startH * 60 + startM + durMins;
-        endH = Math.floor(totalMins / 60) % 24;
-        endM = totalMins % 60;
-    } else {
-        const s = parseSafeTimeData(item.startTime);
-        const e = parseSafeTimeData(item.endTime);
-        startH = s.h; startM = s.m;
-        endH = e.h; endM = e.m;
-    }
-
-    currentRefH = endH;
-    currentRefM = endM;
+    const s = parseSafeTimeData(item.startTime);
+    const e = parseSafeTimeData(item.endTime);
     
-    const startTotalMins = startH * 60 + startM;
-    let endTotalMins = endH * 60 + endM;
+    const startTotalMins = s.h * 60 + s.m;
+    let endTotalMins = e.h * 60 + e.m;
     if (endTotalMins < startTotalMins) endTotalMins += 1440; 
 
     const durMins = endTotalMins - startTotalMins;
@@ -107,8 +82,8 @@ export default function ScheduleCheck({ timeline }) {
       ...item,
       colorHex: theme.hex,
       colorClass: `${theme.bg} ${theme.text} ${theme.border}`,
-      computedStartStr: formatTimeStr(startH, startM),
-      computedEndStr: formatTimeStr(endH, endM),
+      computedStartStr: s.str,
+      computedEndStr: e.str,
       computedDurationStr,
       startTotalMins,
       endTotalMins
@@ -154,27 +129,32 @@ export default function ScheduleCheck({ timeline }) {
               computedItems.map((item, idx) => (
                 <div key={item.id} className="flex gap-4 items-start">
                   
+                  {/* 타임라인 연결 선 */}
                   <div className="flex flex-col items-center relative w-6 mt-5">
                     {idx !== computedItems.length - 1 && <div className="absolute top-4 w-0.5 h-[calc(100%+12px)] bg-slate-200"></div>}
                     <div className="w-3.5 h-3.5 rounded-full border-[3px] border-sky-400 bg-white z-10"></div>
                   </div>
                   
                   <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col hover:border-sky-300 hover:shadow-md transition-all shadow-sm gap-3 mb-2">
+                    
                     <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
                       
-                      <div className="shrink-0 flex items-center bg-white py-2 px-3.5 rounded-xl border border-sky-100 shadow-sm">
+                      {/* ⭐️ 1. 시각 (w-[240px] 고정 너비와 양쪽 정렬 추가!) */}
+                      <div className="w-[240px] shrink-0 flex items-center justify-between bg-white py-2 px-3.5 rounded-xl border border-sky-100 shadow-sm">
                         <span className="text-[15px] font-black text-sky-800 tracking-tight">
                           {item.computedStartStr} <span className="text-sky-300 font-bold mx-1">~</span> {item.computedEndStr}
                         </span>
-                        <span className="text-[12px] font-bold text-sky-500 ml-2">
+                        <span className="text-[12px] font-bold text-sky-500">
                           ({item.computedDurationStr})
                         </span>
                       </div>
 
-                      <div className={`shrink-0 text-[12px] font-black px-3 py-1.5 rounded-lg border ${item.colorClass}`}>
+                      {/* ⭐️ 2. 구분 뱃지 (w-[80px] 고정 너비와 중앙 정렬 추가!) */}
+                      <div className={`w-[80px] shrink-0 text-center text-[12px] font-black px-2 py-1.5 rounded-lg border ${item.colorClass}`}>
                         {item.category}
                       </div>
 
+                      {/* 3. 별칭 + 📌 메모 (앞의 두 개가 고정 크기라 이제 무조건 칼각 정렬됨!) */}
                       <div className="flex-1 min-w-0 border-l-2 border-slate-200 pl-4 py-1 flex items-center gap-2.5">
                         <h4 className="font-bold text-slate-800 text-[17px] truncate">{item.alias || '이름 없음'}</h4>
                         

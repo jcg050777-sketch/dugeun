@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { useJsApiLoader } from '@react-google-maps/api'; // ⭐️ 여기서 불러옴
+import { useJsApiLoader } from '@react-google-maps/api';
 
 import ScheduleList from './pages/ScheduleList';
 import ScheduleEdit from './pages/ScheduleEdit';
 import RouteCheck from './pages/RouteCheck';
 import ScheduleCheck from './pages/ScheduleCheck';
+// ⭐️ 새로 추가한 일정 준비 페이지 임포트
+import SchedulePrepare from './pages/SchedulePrepare';
+
 import ExpenseTotal from './pages/ExpenseTotal'; 
 import TransportCalc from './pages/TransportCalc';
 import ExpenseTrend from './pages/ExpenseTrend'; 
 import CategoryManage from './pages/CategoryManage';
 import BackupRestore from './pages/BackupRestore';
 
-// ⭐️ 구글 맵 설정 (App.jsx로 이동)
 const GOOGLE_MAPS_API_KEY = "AIzaSyB_p8m24A0KrDtyh4RKwTaMVm5jHisEcD8";
 const libraries = ['places'];
 
@@ -45,6 +47,8 @@ const Navigation = () => {
               <Link to="/schedule/edit" className={path === '/schedule/edit' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 정리</Link>
               <Link to="/schedule/route" className={path === '/schedule/route' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>동선 체크</Link>
               <Link to="/schedule/check" className={path === '/schedule/check' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 체크</Link>
+              {/* ⭐️ 네비게이션 메뉴에 '일정 준비' 탭 추가 */}
+              <Link to="/schedule/prepare" className={path === '/schedule/prepare' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 준비</Link>
             </>
           )}
           {activeMain === '여행 비용' && (
@@ -84,7 +88,6 @@ function App() {
     { id: 'cat_1', name: '체험' }, { id: 'cat_2', name: '식당' }, { id: 'cat_3', name: '교통' }, { id: 'cat_4', name: '관광' }, { id: 'cat_5', name: '기타' }
   ]));
 
-  // ⭐️ 2단계: 여기서 구글 맵 API 딱 한 번만 로드!
   const { isLoaded: googleMapsLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
@@ -102,11 +105,14 @@ function App() {
         <Navigation />
         <main className="max-w-6xl mx-auto p-8 relative z-10">
           <Routes>
-            {/* ⭐️ 3단계: 로드된 결과를 props로 넘겨줌 */}
             <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} categories={categories} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/edit" element={<ScheduleEdit places={places} timeline={timeline} setTimeline={setTimeline} />} />
             <Route path="/schedule/route" element={<RouteCheck timeline={timeline} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/check" element={<ScheduleCheck timeline={timeline} />} />
+            
+            {/* ⭐️ 새로 추가한 라우트 경로! */}
+            <Route path="/schedule/prepare" element={<SchedulePrepare />} />
+            
             <Route path="/expense/total" element={<ExpenseTotal timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} />} />
             <Route path="/expense/transport" element={<TransportCalc timeline={timeline} exchangeRate={exchangeRate} />} />
             <Route path="/expense/trend" element={<ExpenseTrend timeline={timeline} exchangeRate={exchangeRate} categories={categories} />} />

@@ -23,14 +23,13 @@ const parseSafeTimeData = (timeData) => {
     let computedH = h;
     if (ampm === 'PM' && computedH < 12) computedH += 12;
     if (ampm === 'AM' && computedH === 12) computedH = 0;
-    return { h, computedH, m, str: timeData, ampm, hour: String(hourStr).padStart(2, '0'), minute: String(minStr).padStart(2, '0') };
+    return { h: computedH, m, str: timeData, ampm, hour: String(hourStr).padStart(2, '0'), minute: String(minStr).padStart(2, '0') };
   }
   return { h: 0, m: 0, str: 'AM 12:00', ampm: 'AM', hour: '12', minute: '00' };
 };
 
 const formatTime = (ampm, hour, minute) => `${ampm} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
-// ⭐️ 카테고리 색상 함수 수정: 배경 흰색, 테두리 연하게, 톤다운 (사용자 요청 "느낌")
 const getCategoryColor = (category) => {
   const colors = { 
     '체험': 'bg-white text-orange-600 border-orange-100', 
@@ -88,22 +87,27 @@ function TimelineItem({ item, dayStr, handleUpdateItem, handleRemoveFromTimeline
       
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         <div {...attributes} {...listeners} className="cursor-grab text-slate-300 hover:text-sky-500 pr-1 touch-none shrink-0">⋮⋮</div>
-        {/* ⭐️ 카테고리 톤다운 스타일 적용 */}
         <div className={`text-[10px] font-black px-1.5 py-0.5 rounded border shrink-0 ${getCategoryColor(item.category)}`}>
           {item.category || '관광'}
         </div>
         <span className="text-[15px] font-black text-slate-800 truncate">{item.alias || '이름 없음'}</span>
       </div>
 
+      {/* ⭐️ 변경점: 조작부의 항목 너비(w)를 고정해서 완벽하게 열 정렬 */}
       <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
         
-        <button onClick={() => handleUpdateItem(dayStr, item.id, 'inputType', inputType === '시각' ? '시간' : '시각')} className={`text-[11px] font-black px-2 py-1.5 rounded-lg transition-colors border shadow-sm shrink-0 ${inputType === '시간' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-sky-100 text-sky-700 border-sky-200'}`}>
+        {/* 1. 모드 버튼 열 (w-[72px] 고정) */}
+        <button 
+          onClick={() => handleUpdateItem(dayStr, item.id, 'inputType', inputType === '시각' ? '시간' : '시각')} 
+          className={`w-[72px] flex justify-center text-[11px] font-black py-1.5 rounded-lg transition-colors border shadow-sm shrink-0 ${inputType === '시간' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-sky-100 text-sky-700 border-sky-200'}`}
+        >
           {inputType === '시간' ? '⏳ 시간' : '🕒 시각'}
         </button>
 
-        <div className="bg-slate-50 border border-slate-100 p-1 rounded-lg flex items-center h-[34px]">
+        {/* 2. 입력창 열 (w-[260px] 고정) - 시작점 완벽 일치 */}
+        <div className="bg-slate-50 border border-slate-100 p-1 rounded-lg flex items-center h-[34px] w-[260px] shrink-0">
           {inputType === '시각' ? (
-            <div className="flex items-center gap-1 text-[12px] font-bold px-1.5">
+            <div className="flex items-center gap-1 text-[12px] font-bold px-1.5 w-full">
               <select value={start.ampm} onChange={e => updateTime('startTime', 'ampm', e.target.value)} className="bg-transparent outline-none cursor-pointer"><option>AM</option><option>PM</option></select>
               <input type="text" value={start.hour} onChange={e => updateTime('startTime', 'hour', e.target.value)} className="w-5 text-center bg-transparent border-b border-slate-300 outline-none focus:border-sky-400" />
               <span className="text-slate-400">:</span>
@@ -117,7 +121,7 @@ function TimelineItem({ item, dayStr, handleUpdateItem, handleRemoveFromTimeline
               <input type="text" value={end.minute} onChange={e => updateTime('endTime', 'minute', e.target.value)} className="w-5 text-center bg-transparent border-b border-slate-300 outline-none focus:border-sky-400" />
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-[11px] px-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] px-1.5 w-full">
               <input type="number" step="0.5" value={item.duration || 1} onChange={e => handleUpdateItem(dayStr, item.id, 'duration', e.target.value)} className="w-10 text-center font-black text-indigo-700 bg-white border border-indigo-200 rounded outline-none" />
               <span className="font-bold text-slate-500 whitespace-nowrap">시간</span>
               <span className="font-bold text-indigo-400 whitespace-nowrap bg-indigo-50 px-1.5 py-0.5 rounded ml-1 hidden md:block">
@@ -127,9 +131,9 @@ function TimelineItem({ item, dayStr, handleUpdateItem, handleRemoveFromTimeline
           )}
         </div>
 
-        {/* ⭐️ 삭제 버튼 수정: 빨간 박스 제거, 글자 회색, 호버 시에만 빨간색 */}
-        <div className="flex items-center gap-1 h-[34px]">
-          <button onClick={() => handleRemoveFromTimeline(dayStr, item.id)} className="text-[11px] font-bold text-slate-400 px-2 h-full transition-colors whitespace-nowrap hover:text-red-500">삭제</button>
+        {/* 3. 삭제 버튼 열 (w-[40px] 고정) */}
+        <div className="flex items-center justify-end h-[34px] w-[40px] shrink-0">
+          <button onClick={() => handleRemoveFromTimeline(dayStr, item.id)} className="text-[11px] font-bold text-slate-400 h-full transition-colors whitespace-nowrap hover:text-red-500">삭제</button>
         </div>
       </div>
     </div>
