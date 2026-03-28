@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Autocomplete } from '@react-google-maps/api'; // ⭐️ useJsApiLoader 삭제
+import { Autocomplete } from '@react-google-maps/api';
 
 function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: place.id });
@@ -10,25 +10,27 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-4 p-4 border border-sky-50 rounded-2xl hover:shadow-md hover:border-sky-200 transition-all bg-white group relative z-10">
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-sky-500 px-2 touch-none">
-        ⋮⋮
-      </div>
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-sky-500 px-2 touch-none">⋮⋮</div>
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <span className={`text-[10px] font-black px-2 py-1 rounded-md border ${getCategoryColor(place.category)}`}>
-            {place.category}
-          </span>
+          <span className={`text-[10px] font-black px-2 py-1 rounded-md border ${getCategoryColor(place.category)}`}>{place.category}</span>
           <h4 className="font-bold text-lg text-slate-800">{place.alias}</h4>
         </div>
         <p className="text-slate-500 text-sm">{place.content}</p>
+        
+        {/* ⭐️ 리스트 화면에서도 메모가 보이도록 추가! */}
+        {place.memo && (
+          <p className="text-[12px] italic font-black text-rose-500 mt-1 flex items-center gap-1">
+            <span className="drop-shadow-sm">📌</span> {place.memo}
+          </p>
+        )}
+
         {place.location ? (
-          <p className="text-slate-500 text-xs mt-1 flex items-center gap-1">
+          <p className="text-slate-500 text-xs mt-1.5 flex items-center gap-1">
             <span>📍</span> <span className="font-bold text-sky-700">{place.location.name}</span> <span className="text-slate-300 truncate">({place.location.address})</span>
           </p>
         ) : (
-          <p className="text-slate-400 text-xs mt-1 flex items-center gap-1 italic">
-            <span>📍</span> 위치 미지정
-          </p>
+          <p className="text-slate-400 text-xs mt-1.5 flex items-center gap-1 italic"><span>📍</span> 위치 미지정</p>
         )}
       </div>
       <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -39,16 +41,14 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
   );
 }
 
-// ⭐️ googleMapsLoaded를 props로 받음
 const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
   const categoryNames = categories ? categories.map(c => c.name) : ['관광'];
   const FILTER_CATEGORIES = ['전체', ...categoryNames];
 
-  const [form, setForm] = useState({ alias: '', category: categoryNames[0] || '관광', content: '', location: null });
+  // ⭐️ form 상태에 memo 추가
+  const [form, setForm] = useState({ alias: '', category: categoryNames[0] || '관광', content: '', memo: '', location: null });
   const [editId, setEditId] = useState(null);
   const [filter, setFilter] = useState('전체');
-
-  // ⭐️ 기존 useJsApiLoader 로직 삭제
 
   const autocompleteRef = useRef(null);
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -73,12 +73,7 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
       }
       setForm({
         ...form,
-        location: {
-          name: place.name,
-          address: place.formatted_address,
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-        }
+        location: { name: place.name, address: place.formatted_address, lat: place.geometry.location.lat(), lng: place.geometry.location.lng() }
       });
     }
   };
@@ -86,25 +81,22 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.alias.trim()) return alert('별칭을 입력해주세요!');
-    
     if (editId) {
       setPlaces(places.map(p => p.id === editId ? { ...form, id: editId } : p));
       setEditId(null);
     } else {
       setPlaces([...places, { ...form, id: Date.now().toString() }]);
     }
-    
-    setForm({ alias: '', category: form.category, content: '', location: null });
+    // ⭐️ 폼 초기화 시 memo도 비워줌
+    setForm({ alias: '', category: form.category, content: '', memo: '', location: null });
     const inputEl = document.getElementById('google-autocomplete-input');
     if (inputEl) inputEl.value = '';
   };
 
-  const handleDelete = (id) => {
-    if(window.confirm('정말 삭제할까요?')) setPlaces(places.filter(p => p.id !== id));
-  };
+  const handleDelete = (id) => { if(window.confirm('정말 삭제할까요?')) setPlaces(places.filter(p => p.id !== id)); };
 
   const handleEdit = (place) => {
-    setForm(place);
+    setForm({ ...place, memo: place.memo || '' });
     setEditId(place.id);
     const inputEl = document.getElementById('google-autocomplete-input');
     if (inputEl) inputEl.value = place.location?.name || '';
@@ -118,9 +110,8 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
   const filteredPlaces = filter === '전체' ? places : places.filter(p => p.category === filter);
 
   return (
-    // ⭐️ 레이아웃 해결: items-start 추가해서 왼쪽 칸이 안 길어지게 함
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start relative">
-      <section className="lg:col-span-1 sticky top-48"> {/* ⭐️ top 위치 살짝 조절 */}
+      <section className="lg:col-span-1 sticky top-[136px]"> 
         <div className="bg-white p-6 rounded-3xl shadow-lg border border-sky-100">
           <h3 className="text-sky-700 text-xl font-bold mb-4 flex items-center gap-2"><span>📝</span> 등록</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -136,11 +127,17 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">내용 (할 일)</label>
-              <textarea value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="ex) 사진 찍기" className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm h-20 resize-none" />
+              <textarea value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="ex) 야경 배경으로 사진 찍기" className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm h-16 resize-none custom-scrollbar" />
             </div>
+            
+            {/* ⭐️ 메모 입력칸 추가 (내용 바로 밑) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1"><span className="text-[10px]">📌</span> 메모 (일정 체크용)</label>
+              <input type="text" value={form.memo} onChange={(e) => setForm({...form, memo: e.target.value})} placeholder="ex) 여권 필수, 예약 바우처 확인" className="w-full p-3 bg-rose-50 border border-rose-100 rounded-xl outline-none focus:border-rose-300 text-sm italic font-bold text-rose-500 placeholder:text-rose-300 placeholder:font-normal" />
+            </div>
+
             <div className="relative">
               <label className="block text-xs font-bold text-slate-500 mb-1">위치 (구글 검색)</label>
-              {/* ⭐️ props로 받은 googleMapsLoaded 사용 */}
               {googleMapsLoaded ? (
                 <Autocomplete onLoad={(autocomplete) => { autocompleteRef.current = autocomplete; }} onPlaceChanged={onPlaceChanged}>
                   <input id="google-autocomplete-input" type="text" placeholder="장소 검색" onChange={() => setForm({...form, location: null})} className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm" />
@@ -159,7 +156,7 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
               {editId ? '수정 완료' : '리스트에 추가하기'}
             </button>
             {editId && (
-              <button type="button" onClick={() => { setEditId(null); setForm({ alias: '', category: form.category, content: '', location: null }); const inputEl = document.getElementById('google-autocomplete-input'); if (inputEl) inputEl.value = ''; }} className="w-full bg-slate-200 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-300 transition-all mt-2">취소</button>
+              <button type="button" onClick={() => { setEditId(null); setForm({ alias: '', category: form.category, content: '', memo: '', location: null }); const inputEl = document.getElementById('google-autocomplete-input'); if (inputEl) inputEl.value = ''; }} className="w-full bg-slate-200 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-300 transition-all mt-2">취소</button>
             )}
           </form>
         </div>

@@ -1,35 +1,37 @@
 import React, { useState } from 'react';
 
-// --- (도우미 함수) 옛날 데이터(객체)든 최신 데이터(글자)든 완벽하게 숫자로 변환 ---
 const parseSafeTimeData = (timeData) => {
   if (!timeData) return { h: 0, m: 0, str: 'AM 12:00' };
   
-  // 1. 옛날 데이터 방식 (객체 형태)
   if (typeof timeData === 'object') {
     let h = parseInt(timeData.hour) || 0;
     const m = parseInt(timeData.minute || timeData.min) || 0;
     const ampm = timeData.ampm || 'AM';
     const str = `${ampm} ${String(timeData.hour || 12).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    
     if (ampm === 'PM' && h < 12) h += 12;
     if (ampm === 'AM' && h === 12) h = 0;
     return { h, m, str };
   }
   
-  // 2. 최신 데이터 방식 (문자열 형태)
   if (typeof timeData === 'string') {
     const [ampm, rest] = timeData.split(' ');
     if (!rest || !rest.includes(':')) return { h: 0, m: 0, str: 'AM 12:00' };
     const [hourStr, minStr] = rest.split(':');
     let h = parseInt(hourStr) || 0;
     const m = parseInt(minStr) || 0;
-    
     if (ampm === 'PM' && h < 12) h += 12;
     if (ampm === 'AM' && h === 12) h = 0;
     return { h, m, str: timeData };
   }
   
   return { h: 0, m: 0, str: 'AM 12:00' };
+};
+
+const formatTimeStr = (h, m) => {
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  let hh = h % 12;
+  if (hh === 0) hh = 12;
+  return `${ampm} ${String(hh).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
 const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -45,7 +47,6 @@ const describeSector = (x, y, radius, startAngle, endAngle) => {
   return ["M", x, y, "L", start.x, start.y, "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y, "Z"].join(" ");
 };
 
-// ⭐️ 일정리스트와 색상 완벽 일치 (새로운 구분 추가 시 보라색 기본값 적용)
 const getCategoryColor = (category) => {
   const colors = {
     '체험': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', hex: '#fb923c' },
@@ -66,13 +67,32 @@ export default function ScheduleCheck({ timeline }) {
   const currentDayStr = availableDays[currentDayIndex];
   const currentItems = currentDayStr ? safeTimeline[currentDayStr] : [];
 
+  // ⭐️ 톱니바퀴처럼 시간이 이어지는 기능 완벽 반영!
+  let currentRefH = 9;
+  let currentRefM = 0;
+
   const computedItems = currentItems.map((item) => {
-    // ⭐️ 어떤 쓰레기 데이터가 들어와도 안전하게 변환
-    const s = parseSafeTimeData(item.startTime);
-    const e = parseSafeTimeData(item.endTime);
+    let startH, startM, endH, endM;
+
+    if (item.inputType === '시간') {
+        startH = currentRefH;
+        startM = currentRefM;
+        const durMins = parseFloat(item.duration || 1) * 60;
+        const totalMins = startH * 60 + startM + durMins;
+        endH = Math.floor(totalMins / 60) % 24;
+        endM = totalMins % 60;
+    } else {
+        const s = parseSafeTimeData(item.startTime);
+        const e = parseSafeTimeData(item.endTime);
+        startH = s.h; startM = s.m;
+        endH = e.h; endM = e.m;
+    }
+
+    currentRefH = endH;
+    currentRefM = endM;
     
-    const startTotalMins = s.h * 60 + s.m;
-    let endTotalMins = e.h * 60 + e.m;
+    const startTotalMins = startH * 60 + startM;
+    let endTotalMins = endH * 60 + endM;
     if (endTotalMins < startTotalMins) endTotalMins += 1440; 
 
     const durMins = endTotalMins - startTotalMins;
@@ -87,8 +107,8 @@ export default function ScheduleCheck({ timeline }) {
       ...item,
       colorHex: theme.hex,
       colorClass: `${theme.bg} ${theme.text} ${theme.border}`,
-      computedStartStr: s.str,
-      computedEndStr: e.str,
+      computedStartStr: formatTimeStr(startH, startM),
+      computedEndStr: formatTimeStr(endH, endM),
       computedDurationStr,
       startTotalMins,
       endTotalMins
@@ -127,55 +147,45 @@ export default function ScheduleCheck({ timeline }) {
         </div>
 
         {viewMode === '일반' && (
-          <div className="max-w-4xl mx-auto w-full space-y-4">
+          <div className="max-w-4xl mx-auto w-full space-y-3">
             {computedItems.length === 0 ? (
               <p className="text-center text-slate-400 py-20">이 날짜에 등록된 일정이 없습니다.</p>
             ) : (
               computedItems.map((item, idx) => (
-                <div key={item.id} className="flex gap-4 items-center">
-                  <div className="flex flex-col items-center relative w-6">
-                    {idx !== computedItems.length - 1 && <div className="absolute top-6 w-0.5 h-12 bg-sky-200"></div>}
-                    <div className="w-4 h-4 rounded-full border-4 border-sky-400 bg-white z-10"></div>
+                <div key={item.id} className="flex gap-4 items-start">
+                  
+                  <div className="flex flex-col items-center relative w-6 mt-5">
+                    {idx !== computedItems.length - 1 && <div className="absolute top-4 w-0.5 h-[calc(100%+12px)] bg-slate-200"></div>}
+                    <div className="w-3.5 h-3.5 rounded-full border-[3px] border-sky-400 bg-white z-10"></div>
                   </div>
                   
-                  <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col hover:border-sky-200 transition-colors shadow-sm gap-3">
-                    
-                    {/* ⭐️ 순서 변경: 시각(소요시간) -> 구분 -> 별칭 */}
-                    <div className="flex items-center gap-4">
+                  <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col hover:border-sky-300 hover:shadow-md transition-all shadow-sm gap-3 mb-2">
+                    <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
                       
-                      {/* 1. 세련되게 바뀐 시각 영역 (+ ()소요시간 추가) */}
-                      <div className="w-[280px] shrink-0 flex items-center gap-3 bg-white text-slate-900 p-3 rounded-xl border border-slate-100 shadow-inner">
-                        <span className="text-sky-400 text-lg">🕒</span>
-                        <div className="flex-1 flex items-baseline gap-2">
-                          <span className="text-lg font-black text-sky-800">
-                            {item.computedStartStr} <span className="text-slate-400 font-medium mx-0.5">~</span> {item.computedEndStr}
-                          </span>
-                          {/* 조그맣게 들어간 소요시간 */}
-                          <span className="text-xs font-medium text-slate-400 shrink-0">
-                            ({item.computedDurationStr})
-                          </span>
-                        </div>
+                      <div className="shrink-0 flex items-center bg-white py-2 px-3.5 rounded-xl border border-sky-100 shadow-sm">
+                        <span className="text-[15px] font-black text-sky-800 tracking-tight">
+                          {item.computedStartStr} <span className="text-sky-300 font-bold mx-1">~</span> {item.computedEndStr}
+                        </span>
+                        <span className="text-[12px] font-bold text-sky-500 ml-2">
+                          ({item.computedDurationStr})
+                        </span>
                       </div>
 
-                      {/* 2. 구분 */}
-                      <div className={`shrink-0 text-center text-xs font-black px-2.5 py-1.5 rounded-lg border ${item.colorClass}`}>
+                      <div className={`shrink-0 text-[12px] font-black px-3 py-1.5 rounded-lg border ${item.colorClass}`}>
                         {item.category}
                       </div>
 
-                      {/* 3. 별칭 */}
-                      <div className="flex-1 min-w-[120px]">
-                        <h4 className="font-bold text-slate-800 text-lg truncate">{item.alias || '이름 없음'}</h4>
+                      <div className="flex-1 min-w-0 border-l-2 border-slate-200 pl-4 py-1 flex items-center gap-2.5">
+                        <h4 className="font-bold text-slate-800 text-[17px] truncate">{item.alias || '이름 없음'}</h4>
+                        
+                        {item.memo && (
+                          <span className="text-[14px] italic font-black text-rose-500 truncate flex items-center gap-1">
+                            <span className="text-[13px] drop-shadow-sm">📌</span> {item.memo}
+                          </span>
+                        )}
                       </div>
+
                     </div>
-
-                    {/* 메모 표시 (기존 유지) */}
-                    {item.memo && (
-                      <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-xl flex items-start gap-2">
-                        <span className="text-rose-400 text-xs mt-0.5">💡</span>
-                        <p className="text-sm italic font-bold text-rose-500">{item.memo}</p>
-                      </div>
-                    )}
-
                   </div>
                 </div>
               ))
@@ -187,7 +197,6 @@ export default function ScheduleCheck({ timeline }) {
           <div className="flex items-center justify-center py-6">
             <div className="relative w-[500px] h-[500px]">
               <div className="absolute inset-0 rounded-full border-[16px] border-slate-50 shadow-inner bg-white"></div>
-              
               <span className="absolute top-2 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 z-20">00:00</span>
               <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 z-20">12:00</span>
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 z-20">06:00</span>
