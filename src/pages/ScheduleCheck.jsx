@@ -139,22 +139,22 @@ export default function ScheduleCheck({ timeline }) {
                     
                     <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
                       
-                      {/* ⭐️ 1. 시각 (w-[240px] 고정 너비와 양쪽 정렬 추가!) */}
-                      <div className="w-[240px] shrink-0 flex items-center justify-between bg-white py-2 px-3.5 rounded-xl border border-sky-100 shadow-sm">
-                        <span className="text-[15px] font-black text-sky-800 tracking-tight">
+                      {/* ⭐️ 너비를 280px로 늘리고, 줄바꿈 방지(whitespace-nowrap) 완벽 적용! */}
+                      <div className="w-[280px] shrink-0 flex items-center justify-between bg-white py-2 px-3.5 rounded-xl border border-sky-100 shadow-sm whitespace-nowrap">
+                        <span className="text-[15px] font-black text-sky-800 tracking-tight whitespace-nowrap">
                           {item.computedStartStr} <span className="text-sky-300 font-bold mx-1">~</span> {item.computedEndStr}
                         </span>
-                        <span className="text-[12px] font-bold text-sky-500">
+                        <span className="text-[12px] font-bold text-sky-500 whitespace-nowrap shrink-0 ml-2">
                           ({item.computedDurationStr})
                         </span>
                       </div>
 
-                      {/* ⭐️ 2. 구분 뱃지 (w-[80px] 고정 너비와 중앙 정렬 추가!) */}
+                      {/* 구분 뱃지 */}
                       <div className={`w-[80px] shrink-0 text-center text-[12px] font-black px-2 py-1.5 rounded-lg border ${item.colorClass}`}>
                         {item.category}
                       </div>
 
-                      {/* 3. 별칭 + 📌 메모 (앞의 두 개가 고정 크기라 이제 무조건 칼각 정렬됨!) */}
+                      {/* 별칭 + 📌 메모 */}
                       <div className="flex-1 min-w-0 border-l-2 border-slate-200 pl-4 py-1 flex items-center gap-2.5">
                         <h4 className="font-bold text-slate-800 text-[17px] truncate">{item.alias || '이름 없음'}</h4>
                         
