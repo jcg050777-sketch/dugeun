@@ -6,7 +6,6 @@ import ScheduleList from './pages/ScheduleList';
 import ScheduleEdit from './pages/ScheduleEdit';
 import RouteCheck from './pages/RouteCheck';
 import ScheduleCheck from './pages/ScheduleCheck';
-// ⭐️ 새로 추가한 일정 준비 페이지 임포트
 import SchedulePrepare from './pages/SchedulePrepare';
 
 import ExpenseTotal from './pages/ExpenseTotal'; 
@@ -47,7 +46,6 @@ const Navigation = () => {
               <Link to="/schedule/edit" className={path === '/schedule/edit' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 정리</Link>
               <Link to="/schedule/route" className={path === '/schedule/route' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>동선 체크</Link>
               <Link to="/schedule/check" className={path === '/schedule/check' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 체크</Link>
-              {/* ⭐️ 네비게이션 메뉴에 '일정 준비' 탭 추가 */}
               <Link to="/schedule/prepare" className={path === '/schedule/prepare' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 준비</Link>
             </>
           )}
@@ -105,12 +103,11 @@ function App() {
         <Navigation />
         <main className="max-w-6xl mx-auto p-8 relative z-10">
           <Routes>
-            <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} categories={categories} googleMapsLoaded={googleMapsLoaded} />} />
+            {/* ⭐️ ScheduleList에 timeline 관련 props 전달 */}
+            <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} timeline={timeline} setTimeline={setTimeline} categories={categories} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/edit" element={<ScheduleEdit places={places} timeline={timeline} setTimeline={setTimeline} />} />
             <Route path="/schedule/route" element={<RouteCheck timeline={timeline} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/check" element={<ScheduleCheck timeline={timeline} />} />
-            
-            {/* ⭐️ 새로 추가한 라우트 경로! */}
             <Route path="/schedule/prepare" element={<SchedulePrepare />} />
             
             <Route path="/expense/total" element={<ExpenseTotal timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} />} />

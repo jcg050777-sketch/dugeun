@@ -12,7 +12,6 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
     <div ref={setNodeRef} style={style} className="flex items-center gap-4 p-4 border border-sky-50 rounded-2xl hover:shadow-md hover:border-sky-200 transition-all bg-white group relative z-10">
       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-sky-500 px-2 touch-none">⋮⋮</div>
       
-      {/* ⭐️ min-w-0 추가: 내용이 길어질 때 레이아웃이 안 깨지고 말줄임표(...)가 잘 작동하게 함 */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-[10px] font-black px-2 py-1 rounded-md border shrink-0 ${getCategoryColor(place.category)}`}>{place.category}</span>
@@ -43,7 +42,8 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
   );
 }
 
-const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
+// ⭐️ timeline, setTimeline props 받기
+const ScheduleList = ({ places, setPlaces, timeline, setTimeline, categories, googleMapsLoaded }) => {
   const categoryNames = categories ? categories.map(c => c.name) : ['관광'];
   const FILTER_CATEGORIES = ['전체', ...categoryNames];
 
@@ -82,12 +82,44 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.alias.trim()) return alert('별칭을 입력해주세요!');
+    
     if (editId) {
+      // 수정 전 기존 데이터 찾기 (구형 데이터 호환성 유지용)
+      const oldPlace = places.find(p => p.id === editId);
+      const oldAlias = oldPlace ? oldPlace.alias : null;
+
+      // 1. 보관함(places) 리스트 업데이트
       setPlaces(places.map(p => p.id === editId ? { ...form, id: editId } : p));
+
+      // 2. 타임라인(timeline) 동기화 업데이트 ⭐️
+      if (timeline && setTimeline) {
+        setTimeline(prevTimeline => {
+          const nextTimeline = { ...prevTimeline };
+          Object.keys(nextTimeline).forEach(day => {
+            nextTimeline[day] = nextTimeline[day].map(tItem => {
+              // originalId(새 방식)가 같거나 alias(구 방식)가 같으면 동기화 진행!
+              if (tItem.originalId === editId || (oldAlias && tItem.alias === oldAlias) || tItem.id === editId) {
+                return {
+                  ...tItem, // 기존에 타임라인에서 설정한 시간(startTime 등)은 그대로 유지!
+                  alias: form.alias,
+                  category: form.category,
+                  content: form.content,
+                  memo: form.memo,
+                  location: form.location
+                };
+              }
+              return tItem;
+            });
+          });
+          return nextTimeline;
+        });
+      }
+      
       setEditId(null);
     } else {
       setPlaces([...places, { ...form, id: Date.now().toString() }]);
     }
+    
     setForm({ alias: '', category: form.category, content: '', memo: '', location: null });
     const inputEl = document.getElementById('google-autocomplete-input');
     if (inputEl) inputEl.value = '';
@@ -163,8 +195,6 @@ const ScheduleList = ({ places, setPlaces, categories, googleMapsLoaded }) => {
 
       <section className="lg:col-span-2">
         <div className="bg-white p-8 rounded-3xl shadow-lg border border-sky-100 min-h-[500px]">
-          
-          {/* ⭐️ 제목(1층)과 버튼들(2층)을 완전히 분리해서 절대 들썩거리지 않게 고정! */}
           <div className="flex flex-col gap-4 mb-6 border-b border-sky-100 pb-5">
             <h3 className="text-xl font-black text-slate-800">
               {filter === '전체' ? `총 ${places.length}개의 리스트` : `'${filter}' 리스트 (${filteredPlaces.length}개)`}
