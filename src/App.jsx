@@ -6,7 +6,9 @@ import ScheduleList from './pages/ScheduleList';
 import ScheduleEdit from './pages/ScheduleEdit';
 import RouteCheck from './pages/RouteCheck';
 import ScheduleCheck from './pages/ScheduleCheck';
+
 import SchedulePrepare from './pages/SchedulePrepare';
+import OutfitPrepare from './pages/OutfitPrepare'; // ⭐️ 새로 만든 복장 준비 컴포넌트
 
 import ExpenseTotal from './pages/ExpenseTotal'; 
 import TransportCalc from './pages/TransportCalc';
@@ -22,6 +24,7 @@ const Navigation = () => {
   const path = location.pathname;
   
   let activeMain = '여행 일정';
+  if (path.startsWith('/prepare')) activeMain = '여행 준비'; // ⭐️ 여행 준비 대분류 추가
   if (path.startsWith('/expense')) activeMain = '여행 비용';
   if (path.startsWith('/advanced')) activeMain = '고급';
 
@@ -33,8 +36,9 @@ const Navigation = () => {
           
           <nav className="flex gap-6 md:gap-10 text-sm md:text-lg font-bold mt-2 overflow-x-auto whitespace-nowrap custom-scrollbar flex-1 pb-1">
             <Link to="/" className={activeMain === '여행 일정' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 일정</Link>
+            {/* ⭐️ 여행 준비 탭 추가! */}
+            <Link to="/prepare/schedule" className={activeMain === '여행 준비' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 준비</Link>
             <Link to="/expense/total" className={activeMain === '여행 비용' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 비용</Link>
-            {/* ⭐️ 모바일에서도 보이게 수정! 이름도 '데이터 세팅'으로 직관적으로 변경 */}
             <Link to="/advanced/backup" className={activeMain === '고급' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>데이터 세팅</Link>
           </nav>
         </div>
@@ -44,13 +48,17 @@ const Navigation = () => {
         <div className="max-w-6xl mx-auto flex gap-6 md:gap-10 text-[13px] md:text-[15px] font-bold overflow-x-auto whitespace-nowrap custom-scrollbar pb-1">
           {activeMain === '여행 일정' && (
             <>
-              {/* 편집 관련 탭은 PC(md 이상)에서만 보이게 처리 */}
               <Link to="/" className={`hidden md:block ${path === '/' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>일정 리스트</Link>
               <Link to="/schedule/edit" className={`hidden md:block ${path === '/schedule/edit' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>일정 정리</Link>
-              
               <Link to="/schedule/check" className={path === '/schedule/check' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>일정 체크</Link>
               <Link to="/schedule/route" className={path === '/schedule/route' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>동선 체크</Link>
-              <Link to="/schedule/prepare" className={path === '/schedule/prepare' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>일정 준비</Link>
+            </>
+          )}
+          {/* ⭐️ 여행 준비 하위 메뉴 */}
+          {activeMain === '여행 준비' && (
+            <>
+              <Link to="/prepare/schedule" className={path === '/prepare/schedule' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>일정 준비</Link>
+              <Link to="/prepare/outfit" className={path === '/prepare/outfit' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>복장 준비</Link>
             </>
           )}
           {activeMain === '여행 비용' && (
@@ -111,7 +119,10 @@ function App() {
             <Route path="/schedule/edit" element={<ScheduleEdit places={places} timeline={timeline} setTimeline={setTimeline} />} />
             <Route path="/schedule/route" element={<RouteCheck timeline={timeline} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/check" element={<ScheduleCheck timeline={timeline} />} />
-            <Route path="/schedule/prepare" element={<SchedulePrepare />} />
+            
+            {/* ⭐️ 여행 준비 라우팅! */}
+            <Route path="/prepare/schedule" element={<SchedulePrepare />} />
+            <Route path="/prepare/outfit" element={<OutfitPrepare timeline={timeline} />} />
             
             <Route path="/expense/total" element={<ExpenseTotal timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} />} />
             <Route path="/expense/transport" element={<TransportCalc timeline={timeline} exchangeRate={exchangeRate} />} />
