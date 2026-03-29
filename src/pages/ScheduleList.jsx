@@ -9,13 +9,14 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-4 p-4 border border-sky-50 rounded-2xl hover:shadow-md hover:border-sky-200 transition-all bg-white group relative z-10">
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-sky-500 px-2 touch-none">⋮⋮</div>
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 md:gap-4 p-4 border border-sky-50 rounded-2xl md:hover:shadow-md hover:border-sky-200 transition-all bg-white group relative z-10">
+      {/* ⭐️ 모바일에서는 드래그 핸들 숨김 */}
+      <div {...attributes} {...listeners} className="hidden md:block cursor-grab active:cursor-grabbing text-slate-300 hover:text-sky-500 px-2 touch-none">⋮⋮</div>
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-[10px] font-black px-2 py-1 rounded-md border shrink-0 ${getCategoryColor(place.category)}`}>{place.category}</span>
-          <h4 className="font-bold text-lg text-slate-800 truncate">{place.alias}</h4>
+          <h4 className="font-bold text-base md:text-lg text-slate-800 truncate">{place.alias}</h4>
         </div>
         <p className="text-slate-500 text-sm truncate">{place.content}</p>
         
@@ -27,14 +28,15 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
 
         {place.location ? (
           <p className="text-slate-500 text-xs mt-1.5 flex items-center gap-1 truncate">
-            <span className="shrink-0">📍</span> <span className="font-bold text-sky-700 shrink-0">{place.location.name}</span> <span className="text-slate-300 truncate">({place.location.address})</span>
+            <span className="shrink-0">📍</span> <span className="font-bold text-sky-700 shrink-0">{place.location.name}</span> <span className="text-slate-300 truncate hidden sm:inline">({place.location.address})</span>
           </p>
         ) : (
           <p className="text-slate-400 text-xs mt-1.5 flex items-center gap-1 italic shrink-0"><span>📍</span> 위치 미지정</p>
         )}
       </div>
       
-      <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      {/* ⭐️ 모바일에서는 수정/삭제 버튼 숨김 */}
+      <div className="hidden md:flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button onClick={() => handleEdit(place)} className="text-xs bg-sky-50 text-sky-600 px-3 py-1 rounded hover:bg-sky-100 font-bold">수정</button>
         <button onClick={() => handleDelete(place.id)} className="text-xs bg-red-50 text-red-600 px-3 py-1 rounded hover:bg-red-100 font-bold">삭제</button>
       </div>
@@ -42,7 +44,6 @@ function SortableItem({ place, getCategoryColor, handleEdit, handleDelete }) {
   );
 }
 
-// ⭐️ timeline, setTimeline props 받기
 const ScheduleList = ({ places, setPlaces, timeline, setTimeline, categories, googleMapsLoaded }) => {
   const categoryNames = categories ? categories.map(c => c.name) : ['관광'];
   const FILTER_CATEGORIES = ['전체', ...categoryNames];
@@ -84,29 +85,18 @@ const ScheduleList = ({ places, setPlaces, timeline, setTimeline, categories, go
     if (!form.alias.trim()) return alert('별칭을 입력해주세요!');
     
     if (editId) {
-      // 수정 전 기존 데이터 찾기 (구형 데이터 호환성 유지용)
       const oldPlace = places.find(p => p.id === editId);
       const oldAlias = oldPlace ? oldPlace.alias : null;
 
-      // 1. 보관함(places) 리스트 업데이트
       setPlaces(places.map(p => p.id === editId ? { ...form, id: editId } : p));
 
-      // 2. 타임라인(timeline) 동기화 업데이트 ⭐️
       if (timeline && setTimeline) {
         setTimeline(prevTimeline => {
           const nextTimeline = { ...prevTimeline };
           Object.keys(nextTimeline).forEach(day => {
             nextTimeline[day] = nextTimeline[day].map(tItem => {
-              // originalId(새 방식)가 같거나 alias(구 방식)가 같으면 동기화 진행!
               if (tItem.originalId === editId || (oldAlias && tItem.alias === oldAlias) || tItem.id === editId) {
-                return {
-                  ...tItem, // 기존에 타임라인에서 설정한 시간(startTime 등)은 그대로 유지!
-                  alias: form.alias,
-                  category: form.category,
-                  content: form.content,
-                  memo: form.memo,
-                  location: form.location
-                };
+                return { ...tItem, alias: form.alias, category: form.category, content: form.content, memo: form.memo, location: form.location };
               }
               return tItem;
             });
@@ -114,7 +104,6 @@ const ScheduleList = ({ places, setPlaces, timeline, setTimeline, categories, go
           return nextTimeline;
         });
       }
-      
       setEditId(null);
     } else {
       setPlaces([...places, { ...form, id: Date.now().toString() }]);
@@ -142,8 +131,10 @@ const ScheduleList = ({ places, setPlaces, timeline, setTimeline, categories, go
   const filteredPlaces = filter === '전체' ? places : places.filter(p => p.category === filter);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start relative">
-      <section className="lg:col-span-1 sticky top-[136px]"> 
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start relative">
+      
+      {/* ⭐️ 모바일에서는 등록 폼 전체를 숨김 처리! (hidden md:block) */}
+      <section className="hidden md:block md:col-span-1 sticky top-[136px]"> 
         <div className="bg-white p-6 rounded-3xl shadow-lg border border-sky-100">
           <h3 className="text-sky-700 text-xl font-bold mb-4 flex items-center gap-2"><span>📝</span> 등록</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -193,16 +184,17 @@ const ScheduleList = ({ places, setPlaces, timeline, setTimeline, categories, go
         </div>
       </section>
 
-      <section className="lg:col-span-2">
-        <div className="bg-white p-8 rounded-3xl shadow-lg border border-sky-100 min-h-[500px]">
+      {/* ⭐️ 모바일에서는 리스트가 화면 전체를 차지함 (col-span-full) */}
+      <section className="col-span-1 md:col-span-2">
+        <div className="bg-white p-4 md:p-8 rounded-3xl shadow-lg border border-sky-100 min-h-[500px]">
           <div className="flex flex-col gap-4 mb-6 border-b border-sky-100 pb-5">
-            <h3 className="text-xl font-black text-slate-800">
+            <h3 className="text-lg md:text-xl font-black text-slate-800">
               {filter === '전체' ? `총 ${places.length}개의 리스트` : `'${filter}' 리스트 (${filteredPlaces.length}개)`}
             </h3>
             
             <div className="flex flex-wrap gap-2">
               {FILTER_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => setFilter(cat)} className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${filter === cat ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'}`}>
+                <button key={cat} onClick={() => setFilter(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${filter === cat ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                   {cat}
                 </button>
               ))}
@@ -214,7 +206,7 @@ const ScheduleList = ({ places, setPlaces, timeline, setTimeline, categories, go
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={filteredPlaces.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {filteredPlaces.map((place) => <SortableItem key={place.id} place={place} getCategoryColor={getCategoryColor} handleEdit={handleEdit} handleDelete={handleDelete} />)}
                 </div>
               </SortableContext>

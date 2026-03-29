@@ -34,8 +34,8 @@ const Navigation = () => {
           <nav className="flex gap-6 md:gap-10 text-sm md:text-lg font-bold mt-2 overflow-x-auto whitespace-nowrap custom-scrollbar flex-1 pb-1">
             <Link to="/" className={activeMain === '여행 일정' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 일정</Link>
             <Link to="/expense/total" className={activeMain === '여행 비용' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 비용</Link>
-            {/* 고급 메뉴는 모바일에서 숨김 (뷰어 역할에 집중) */}
-            <Link to="/advanced/category" className={activeMain === '고급' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5 hidden md:block" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5 hidden md:block"}>고급</Link>
+            {/* ⭐️ 모바일에서도 보이게 수정! 이름도 '데이터 세팅'으로 직관적으로 변경 */}
+            <Link to="/advanced/backup" className={activeMain === '고급' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>데이터 세팅</Link>
           </nav>
         </div>
       </header>
@@ -44,7 +44,7 @@ const Navigation = () => {
         <div className="max-w-6xl mx-auto flex gap-6 md:gap-10 text-[13px] md:text-[15px] font-bold overflow-x-auto whitespace-nowrap custom-scrollbar pb-1">
           {activeMain === '여행 일정' && (
             <>
-              {/* 모바일에서는 편집 기능인 '일정 리스트', '일정 정리' 숨기기 */}
+              {/* 편집 관련 탭은 PC(md 이상)에서만 보이게 처리 */}
               <Link to="/" className={`hidden md:block ${path === '/' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>일정 리스트</Link>
               <Link to="/schedule/edit" className={`hidden md:block ${path === '/schedule/edit' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>일정 정리</Link>
               
@@ -62,8 +62,8 @@ const Navigation = () => {
           )}
           {activeMain === '고급' && (
             <>
-              <Link to="/advanced/category" className={path === '/advanced/category' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>구분 추가</Link>
               <Link to="/advanced/backup" className={path === '/advanced/backup' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>백업 / 복구</Link>
+              <Link to="/advanced/category" className={`hidden md:block ${path === '/advanced/category' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>구분 추가</Link>
             </>
           )}
         </div>
@@ -105,7 +105,6 @@ function App() {
     <Router>
       <div className="min-h-screen bg-[#fcfdff] text-slate-900 font-sans pb-20 relative">
         <Navigation />
-        {/* 모바일 화면에서는 좌우 패딩을 줄여서 콘텐츠 넓게 쓰기 */}
         <main className="max-w-6xl mx-auto p-4 md:p-8 relative z-10">
           <Routes>
             <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} timeline={timeline} setTimeline={setTimeline} categories={categories} googleMapsLoaded={googleMapsLoaded} />} />

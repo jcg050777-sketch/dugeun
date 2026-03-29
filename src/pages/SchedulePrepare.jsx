@@ -3,7 +3,6 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// ⭐️ D-Day 자동 계산 함수
 const calculateDday = (targetDate) => {
   if (!targetDate) return '';
   const today = new Date();
@@ -19,105 +18,105 @@ const calculateDday = (targetDate) => {
   return `D+${Math.abs(dDay)}`;
 };
 
-// -----------------------------------------------------------
-// 🎒 준비물 리스트 아이템 (드래그 지원)
-// -----------------------------------------------------------
 function SortablePrepareItem({ item, updateItem, deleteItem }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto', opacity: isDragging ? 0.5 : 1 };
-  
-  // ⭐️ 수정 모드 상태 추가
   const [isEditing, setIsEditing] = useState(false);
 
   return (
-    <div ref={setNodeRef} style={style} className={`flex items-center gap-3 p-3.5 bg-white border rounded-2xl mb-3 shadow-sm group transition-all ${isDragging ? 'border-sky-400 scale-[1.01]' : 'border-slate-200 hover:border-sky-300'}`}>
+    <div ref={setNodeRef} style={style} className={`bg-white border rounded-2xl mb-3 shadow-sm group transition-all ${isDragging ? 'border-sky-400 scale-[1.01]' : 'border-slate-200 md:hover:border-sky-300'}`}>
       
-      {/* 1. 드래그 핸들 */}
-      <div {...attributes} {...listeners} className="cursor-grab text-slate-300 hover:text-sky-500 touch-none px-1">⋮⋮</div>
-      
-      {/* 2. 품목 & 구매 방법 */}
-      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 items-center">
-        {isEditing ? (
-          <>
-            <input type="text" value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} className="w-full text-[15px] font-black bg-transparent outline-none border-b border-sky-300 px-1 py-0.5 text-slate-800" autoFocus />
-            <input type="text" value={item.method} onChange={(e) => updateItem(item.id, 'method', e.target.value)} className="w-full text-[14px] font-bold bg-transparent outline-none border-b border-sky-300 px-1 py-0.5 text-sky-600" />
-          </>
-        ) : (
-          <>
-            <span className={`text-[15px] font-black px-1 py-0.5 truncate ${item.isChecked ? 'text-slate-300 line-through' : 'text-slate-800'}`}>{item.name}</span>
-            <span className={`text-[14px] font-bold px-1 py-0.5 truncate ${item.isChecked ? 'text-slate-200' : 'text-sky-600'}`}>{item.method || '-'}</span>
-          </>
-        )}
+      {/* ⭐️ PC 뷰 (md 이상에서만 표시) */}
+      <div className="hidden md:flex items-center gap-3 p-3.5">
+        <div {...attributes} {...listeners} className="cursor-grab text-slate-300 hover:text-sky-500 touch-none px-1">⋮⋮</div>
+        <div className="flex-1 grid grid-cols-2 gap-4 pl-2 items-center">
+          {isEditing ? (
+            <>
+              <input type="text" value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} className="w-full text-[15px] font-black bg-transparent outline-none border-b border-sky-300 px-1 py-0.5 text-slate-800" autoFocus />
+              <input type="text" value={item.method} onChange={(e) => updateItem(item.id, 'method', e.target.value)} className="w-full text-[14px] font-bold bg-transparent outline-none border-b border-sky-300 px-1 py-0.5 text-sky-600" />
+            </>
+          ) : (
+            <>
+              <span className={`text-[15px] font-black px-1 py-0.5 truncate ${item.isChecked ? 'text-slate-300 line-through' : 'text-slate-800'}`}>{item.name}</span>
+              <span className={`text-[14px] font-bold px-1 py-0.5 truncate ${item.isChecked ? 'text-slate-200' : 'text-sky-600'}`}>{item.method || '-'}</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center justify-center px-4 border-l border-slate-100">
+          <input type="checkbox" checked={item.isChecked} onChange={(e) => updateItem(item.id, 'isChecked', e.target.checked)} className="w-5 h-5 accent-sky-500 cursor-pointer rounded-md hover:scale-110 transition-transform" />
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={() => setIsEditing(!isEditing)} className={`text-[12px] font-bold px-2 py-1 transition-colors whitespace-nowrap ${isEditing ? 'text-sky-500' : 'text-slate-300'}`}>
+            {isEditing ? '완료' : '수정'}
+          </button>
+          <button onClick={() => deleteItem(item.id)} className="text-[12px] font-bold text-slate-300 px-2 py-1 transition-colors whitespace-nowrap">삭제</button>
+        </div>
       </div>
 
-      {/* 3. 구매 유무 (체크박스) */}
-      <div className="flex items-center justify-center px-4 border-l border-slate-100">
-        <input type="checkbox" checked={item.isChecked} onChange={(e) => updateItem(item.id, 'isChecked', e.target.checked)} className="w-5 h-5 accent-sky-500 cursor-pointer rounded-md hover:scale-110 transition-transform" />
-      </div>
-
-      {/* 4. 액션 버튼 (수정 & 삭제) */}
-      <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => setIsEditing(!isEditing)} className={`text-[12px] font-bold px-2 py-1 transition-colors whitespace-nowrap ${isEditing ? 'text-sky-500 hover:text-sky-700' : 'text-slate-300 hover:text-slate-500'}`}>
-          {isEditing ? '완료' : '수정'}
-        </button>
-        <button onClick={() => deleteItem(item.id)} className="text-[12px] font-bold text-slate-300 hover:text-red-500 px-2 py-1 transition-colors whitespace-nowrap">삭제</button>
+      {/* ⭐️ 모바일 뷰어 전용 레이아웃 (체크박스와 텍스트만 깔끔하게!) */}
+      <div className="flex md:hidden items-center justify-between p-4 gap-3">
+        <input type="checkbox" checked={item.isChecked} onChange={(e) => updateItem(item.id, 'isChecked', e.target.checked)} className="w-6 h-6 accent-sky-500 rounded-md shrink-0" />
+        <div className="flex flex-col flex-1 min-w-0">
+          <span className={`text-[15px] font-black truncate ${item.isChecked ? 'text-slate-300 line-through' : 'text-slate-800'}`}>{item.name}</span>
+          <span className={`text-[12px] font-bold truncate mt-0.5 ${item.isChecked ? 'text-slate-200' : 'text-sky-600'}`}>{item.method || '-'}</span>
+        </div>
       </div>
     </div>
   );
 }
 
-// -----------------------------------------------------------
-// ⏰ 데드라인 리스트 아이템 (드래그 미지원, 자동 정렬)
-// -----------------------------------------------------------
 function DeadlineItem({ item, updateItem, deleteItem }) {
   const [isEditing, setIsEditing] = useState(false);
-
   const dDayStr = calculateDday(item.date);
   const isUrgent = dDayStr === 'D-Day' || (dDayStr.startsWith('D-') && parseInt(dDayStr.replace('D-', '')) <= 3) || dDayStr.startsWith('D+');
 
   return (
-    <div className="flex items-center gap-3 p-3.5 bg-white border rounded-2xl mb-3 shadow-sm group transition-all border-slate-200 hover:border-indigo-300">
+    <div className="bg-white border rounded-2xl mb-3 shadow-sm group transition-all border-slate-200 md:hover:border-indigo-300">
       
-      {/* D-Day 뱃지 (드래그 핸들 없음!) */}
-      <div className={`w-16 shrink-0 text-center text-[12px] font-black px-2 py-1.5 rounded-lg border ml-2 ${item.isChecked ? 'bg-slate-50 text-slate-300 border-slate-100' : isUrgent ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'}`}>
-        {dDayStr || '미정'}
+      {/* ⭐️ PC 뷰 */}
+      <div className="hidden md:flex items-center gap-3 p-3.5">
+        <div className={`w-16 shrink-0 text-center text-[12px] font-black px-2 py-1.5 rounded-lg border ml-2 ${item.isChecked ? 'bg-slate-50 text-slate-300 border-slate-100' : isUrgent ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'}`}>
+          {dDayStr || '미정'}
+        </div>
+        <div className="flex-1 grid grid-cols-2 gap-4 pl-2 items-center">
+          {isEditing ? (
+            <>
+              <input type="text" value={item.task} onChange={(e) => updateItem(item.id, 'task', e.target.value)} className="w-full text-[15px] font-black bg-transparent outline-none border-b border-indigo-300 px-1 py-0.5 text-slate-800" autoFocus />
+              <input type="date" value={item.date} onChange={(e) => updateItem(item.id, 'date', e.target.value)} className="w-[130px] text-[13px] font-bold bg-transparent outline-none border-b border-indigo-300 px-1 py-0.5 text-slate-700 cursor-pointer" />
+            </>
+          ) : (
+            <>
+              <span className={`text-[15px] font-black px-1 py-0.5 truncate ${item.isChecked ? 'text-slate-300 line-through' : 'text-slate-800'}`}>{item.task}</span>
+              <span className={`text-[13px] font-bold px-1 py-0.5 truncate ${item.isChecked ? 'text-slate-300' : 'text-slate-500'}`}>{item.date}</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center justify-center px-4 border-l border-slate-100">
+          <input type="checkbox" checked={item.isChecked} onChange={(e) => updateItem(item.id, 'isChecked', e.target.checked)} className="w-5 h-5 accent-indigo-500 cursor-pointer rounded-md hover:scale-110 transition-transform" />
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={() => setIsEditing(!isEditing)} className={`text-[12px] font-bold px-2 py-1 transition-colors whitespace-nowrap ${isEditing ? 'text-indigo-500' : 'text-slate-300'}`}>
+            {isEditing ? '완료' : '수정'}
+          </button>
+          <button onClick={() => deleteItem(item.id)} className="text-[12px] font-bold text-slate-300 px-2 py-1 transition-colors whitespace-nowrap">삭제</button>
+        </div>
       </div>
 
-      {/* 할 일 & 마감일 */}
-      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2 items-center">
-        {isEditing ? (
-          <>
-            <input type="text" value={item.task} onChange={(e) => updateItem(item.id, 'task', e.target.value)} className="w-full text-[15px] font-black bg-transparent outline-none border-b border-indigo-300 px-1 py-0.5 text-slate-800" autoFocus />
-            {/* ⭐️ 달력 아이콘 밀착을 위해 넓이를 고정(w-[130px]) */}
-            <input type="date" value={item.date} onChange={(e) => updateItem(item.id, 'date', e.target.value)} className="w-[130px] text-[13px] font-bold bg-transparent outline-none border-b border-indigo-300 px-1 py-0.5 text-slate-700 cursor-pointer" />
-          </>
-        ) : (
-          <>
-            <span className={`text-[15px] font-black px-1 py-0.5 truncate ${item.isChecked ? 'text-slate-300 line-through' : 'text-slate-800'}`}>{item.task}</span>
-            <span className={`text-[13px] font-bold px-1 py-0.5 truncate ${item.isChecked ? 'text-slate-300' : 'text-slate-500'}`}>{item.date}</span>
-          </>
-        )}
-      </div>
-
-      {/* 완료 체크박스 */}
-      <div className="flex items-center justify-center px-4 border-l border-slate-100">
-        <input type="checkbox" checked={item.isChecked} onChange={(e) => updateItem(item.id, 'isChecked', e.target.checked)} className="w-5 h-5 accent-indigo-500 cursor-pointer rounded-md hover:scale-110 transition-transform" />
-      </div>
-
-      {/* 액션 버튼 */}
-      <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => setIsEditing(!isEditing)} className={`text-[12px] font-bold px-2 py-1 transition-colors whitespace-nowrap ${isEditing ? 'text-indigo-500 hover:text-indigo-700' : 'text-slate-300 hover:text-slate-500'}`}>
-          {isEditing ? '완료' : '수정'}
-        </button>
-        <button onClick={() => deleteItem(item.id)} className="text-[12px] font-bold text-slate-300 hover:text-red-500 px-2 py-1 transition-colors whitespace-nowrap">삭제</button>
+      {/* ⭐️ 모바일 뷰어 전용 레이아웃 */}
+      <div className="flex md:hidden items-center justify-between p-4 gap-3">
+        <div className={`w-14 shrink-0 text-center text-[11px] font-black px-1 py-1.5 rounded-lg border ${item.isChecked ? 'bg-slate-50 text-slate-300 border-slate-100' : isUrgent ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'}`}>
+          {dDayStr || '미정'}
+        </div>
+        <div className="flex flex-col flex-1 min-w-0">
+          <span className={`text-[15px] font-black truncate ${item.isChecked ? 'text-slate-300 line-through' : 'text-slate-800'}`}>{item.task}</span>
+          <span className={`text-[11px] font-bold truncate mt-0.5 ${item.isChecked ? 'text-slate-300' : 'text-slate-400'}`}>{item.date}</span>
+        </div>
+        <input type="checkbox" checked={item.isChecked} onChange={(e) => updateItem(item.id, 'isChecked', e.target.checked)} className="w-6 h-6 accent-indigo-500 rounded-md shrink-0" />
       </div>
     </div>
   );
 }
 
-// -----------------------------------------------------------
-// 메인 컴포넌트
-// -----------------------------------------------------------
 export default function SchedulePrepare() {
   const [viewMode, setViewMode] = useState('준비물');
   
@@ -141,7 +140,6 @@ export default function SchedulePrepare() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  // 준비물 드래그 앤 드롭 전용 (데드라인은 사용 안 함)
   const handlePrepareDragEnd = (event) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
@@ -174,115 +172,95 @@ export default function SchedulePrepare() {
   const updateDeadlineItem = (id, field, value) => { setDeadlineItems(deadlineItems.map(item => item.id === id ? { ...item, [field]: value } : item)); };
   const deleteDeadlineItem = (id) => { setDeadlineItems(deadlineItems.filter(item => item.id !== id)); };
 
-  // ⭐️ 데드라인 항목 마감일 순으로 자동 정렬
   const sortedDeadlineItems = [...deadlineItems].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return (
     <div className="flex flex-col gap-6 pb-20">
-      
-      {/* ⭐️ 이모지 아이콘 제거된 탭 메뉴 */}
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-sky-100 flex items-center justify-center sticky top-[136px] z-30">
+      <div className="bg-white p-3 md:p-4 rounded-2xl md:rounded-3xl shadow-sm border border-sky-100 flex items-center justify-center sticky top-[120px] md:top-[136px] z-30">
         <div className="bg-sky-50 p-1 rounded-full flex gap-1 border border-sky-100 shadow-inner">
-          <button onClick={() => setViewMode('준비물')} className={`px-8 py-2 rounded-full font-bold text-sm transition-all ${viewMode === '준비물' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-400 hover:text-sky-600'}`}>준비물</button>
-          <button onClick={() => setViewMode('데드라인')} className={`px-8 py-2 rounded-full font-bold text-sm transition-all ${viewMode === '데드라인' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-400 hover:text-indigo-600'}`}>데드라인</button>
+          <button onClick={() => setViewMode('준비물')} className={`px-6 md:px-8 py-2 rounded-full font-bold text-xs md:text-sm transition-all ${viewMode === '준비물' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-400 hover:text-sky-600'}`}>준비물</button>
+          <button onClick={() => setViewMode('데드라인')} className={`px-6 md:px-8 py-2 rounded-full font-bold text-xs md:text-sm transition-all ${viewMode === '데드라인' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-400 hover:text-indigo-600'}`}>데드라인</button>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-sky-100 p-8 min-h-[600px] max-w-4xl mx-auto w-full">
+      <div className="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-sky-100 p-4 md:p-8 min-h-[400px] md:min-h-[600px] max-w-4xl mx-auto w-full">
         
-        {/* ==========================================
-             🎒 준비물 모드 (DND 지원)
-        ========================================== */}
-        {viewMode === '준비물' && (
-          <div className="flex flex-col gap-8">
-            <form onSubmit={handleAddPrepare} className="flex flex-col sm:flex-row gap-3 bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-inner">
-              <div className="flex-1 flex flex-col gap-1">
-                <label className="text-[11px] font-black text-slate-500 ml-1">품목 (필수)</label>
-                <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="ex) 여권, 멀티어댑터" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-sky-400 shadow-sm" />
-              </div>
-              <div className="flex-1 flex flex-col gap-1">
-                <label className="text-[11px] font-black text-slate-500 ml-1">구매/준비 방법 (선택)</label>
-                <input type="text" value={newItemMethod} onChange={e => setNewItemMethod(e.target.value)} placeholder="ex) 다이소, 인터넷 미리 예매" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-400 shadow-sm" />
-              </div>
-              <div className="flex flex-col gap-1 justify-end">
-                <button type="submit" className="bg-sky-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm hover:bg-sky-700 transition-colors whitespace-nowrap h-[42px]">추가하기</button>
-              </div>
-            </form>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePrepareDragEnd}>
+          {viewMode === '준비물' && (
+            <div className="flex flex-col gap-4 md:gap-8">
+              {/* ⭐️ 폼과 PC용 헤더는 모바일에서 숨김 */}
+              <form onSubmit={handleAddPrepare} className="hidden md:flex flex-col sm:flex-row gap-3 bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-inner">
+                <div className="flex-1 flex flex-col gap-1">
+                  <label className="text-[11px] font-black text-slate-500 ml-1">품목 (필수)</label>
+                  <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-sky-400 shadow-sm" />
+                </div>
+                <div className="flex-1 flex flex-col gap-1">
+                  <label className="text-[11px] font-black text-slate-500 ml-1">구매/준비 방법</label>
+                  <input type="text" value={newItemMethod} onChange={e => setNewItemMethod(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-sky-400 shadow-sm" />
+                </div>
+                <div className="flex flex-col gap-1 justify-end">
+                  <button type="submit" className="bg-sky-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm hover:bg-sky-700 transition-colors h-[42px]">추가하기</button>
+                </div>
+              </form>
 
-            <div className="flex items-center gap-4 px-6 pb-2 border-b border-slate-100 text-[12px] font-black text-slate-400">
-              <div className="w-5"></div>
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2">
-                <div>품목</div>
-                <div>구매 / 준비 방법</div>
+              <div className="hidden md:flex items-center gap-4 px-6 pb-2 border-b border-slate-100 text-[12px] font-black text-slate-400">
+                <div className="w-5"></div>
+                <div className="flex-1 grid grid-cols-2 gap-4 pl-2">
+                  <div>품목</div>
+                  <div>구매 / 준비 방법</div>
+                </div>
+                <div className="w-12 text-center">확인</div>
+                <div className="w-20 text-center"></div>
               </div>
-              <div className="w-12 text-center">확인</div>
-              <div className="w-20 text-center"></div>
-            </div>
 
-            {prepareItems.length === 0 ? (
-              <div className="text-center py-20 text-slate-400 font-bold flex flex-col items-center gap-3">
-                <span className="text-5xl">🛍️</span>
-                <p>아직 등록된 준비물이 없습니다.<br/>위에서 여행 준비물을 추가해보세요!</p>
-              </div>
-            ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePrepareDragEnd}>
+              {prepareItems.length === 0 ? (
+                <div className="text-center py-20 text-slate-400 font-bold"><p>등록된 준비물이 없습니다.</p></div>
+              ) : (
                 <SortableContext items={prepareItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-1">
-                    {prepareItems.map(item => (
-                      <SortablePrepareItem key={item.id} item={item} updateItem={updatePrepareItem} deleteItem={deletePrepareItem} />
-                    ))}
+                    {prepareItems.map(item => <SortablePrepareItem key={item.id} item={item} updateItem={updatePrepareItem} deleteItem={deletePrepareItem} />)}
                   </div>
                 </SortableContext>
-              </DndContext>
-            )}
-          </div>
-        )}
-
-        {/* ==========================================
-             ⏰ 데드라인 모드 (날짜순 자동 정렬)
-        ========================================== */}
-        {viewMode === '데드라인' && (
-          <div className="flex flex-col gap-8">
-            <form onSubmit={handleAddDeadline} className="flex flex-col sm:flex-row gap-3 bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 shadow-inner">
-              <div className="flex-1 flex flex-col gap-1">
-                <label className="text-[11px] font-black text-indigo-400 ml-1">할 일 (필수)</label>
-                <input type="text" value={newDeadlineTask} onChange={e => setNewDeadlineTask(e.target.value)} placeholder="ex) 비자 발급, 숙소 예약금 결제" className="bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-400 shadow-sm" />
-              </div>
-              <div className="w-full sm:w-48 flex flex-col gap-1">
-                <label className="text-[11px] font-black text-indigo-400 ml-1">마감일 (필수)</label>
-                <input type="date" value={newDeadlineDate} onChange={e => setNewDeadlineDate(e.target.value)} className="bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 shadow-sm font-bold text-slate-700 cursor-pointer" />
-              </div>
-              <div className="flex flex-col gap-1 justify-end">
-                <button type="submit" className="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm hover:bg-indigo-700 transition-colors whitespace-nowrap h-[42px]">추가하기</button>
-              </div>
-            </form>
-
-            <div className="flex items-center gap-4 px-6 pb-2 border-b border-slate-100 text-[12px] font-black text-slate-400">
-              <div className="w-16 text-center text-indigo-300 ml-2">D-Day</div>
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 pl-2">
-                <div>할 일</div>
-                <div>마감일</div>
-              </div>
-              <div className="w-12 text-center">완료</div>
-              <div className="w-20 text-center"></div>
+              )}
             </div>
+          )}
 
-            {sortedDeadlineItems.length === 0 ? (
-              <div className="text-center py-20 text-slate-400 font-bold flex flex-col items-center gap-3">
-                <span className="text-5xl">⏰</span>
-                <p>아직 등록된 데드라인 일정이 없습니다.<br/>반드시 기한 내에 처리해야 할 일들을 등록해보세요!</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {/* ⭐️ 데드라인은 드래그 컴포넌트 없이 매끄럽게 렌더링! */}
-                {sortedDeadlineItems.map(item => (
-                  <DeadlineItem key={item.id} item={item} updateItem={updateDeadlineItem} deleteItem={deleteDeadlineItem} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+          {viewMode === '데드라인' && (
+            <div className="flex flex-col gap-4 md:gap-8">
+              <form onSubmit={handleAddDeadline} className="hidden md:flex flex-col sm:flex-row gap-3 bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 shadow-inner">
+                <div className="flex-1 flex flex-col gap-1">
+                  <label className="text-[11px] font-black text-indigo-400 ml-1">할 일 (필수)</label>
+                  <input type="text" value={newDeadlineTask} onChange={e => setNewDeadlineTask(e.target.value)} className="bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-400 shadow-sm" />
+                </div>
+                <div className="w-full sm:w-48 flex flex-col gap-1">
+                  <label className="text-[11px] font-black text-indigo-400 ml-1">마감일 (필수)</label>
+                  <input type="date" value={newDeadlineDate} onChange={e => setNewDeadlineDate(e.target.value)} className="bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 shadow-sm font-bold text-slate-700 cursor-pointer" />
+                </div>
+                <div className="flex flex-col gap-1 justify-end">
+                  <button type="submit" className="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm hover:bg-indigo-700 transition-colors h-[42px]">추가하기</button>
+                </div>
+              </form>
 
+              <div className="hidden md:flex items-center gap-4 px-6 pb-2 border-b border-slate-100 text-[12px] font-black text-slate-400">
+                <div className="w-16 text-center text-indigo-300 ml-2">D-Day</div>
+                <div className="flex-1 grid grid-cols-2 gap-4 pl-2">
+                  <div>할 일</div>
+                  <div>마감일</div>
+                </div>
+                <div className="w-12 text-center">완료</div>
+                <div className="w-20 text-center"></div>
+              </div>
+
+              {sortedDeadlineItems.length === 0 ? (
+                <div className="text-center py-20 text-slate-400 font-bold"><p>등록된 데드라인이 없습니다.</p></div>
+              ) : (
+                <div className="space-y-1">
+                  {sortedDeadlineItems.map(item => <DeadlineItem key={item.id} item={item} updateItem={updateDeadlineItem} deleteItem={deleteDeadlineItem} />)}
+                </div>
+              )}
+            </div>
+          )}
+        </DndContext>
       </div>
     </div>
   );
