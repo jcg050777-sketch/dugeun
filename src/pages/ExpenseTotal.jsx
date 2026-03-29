@@ -1,8 +1,30 @@
 import React from 'react';
 
-export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setExchangeRate }) {
+// ⭐️ 커스텀 테마 색상 리스트 추가
+const THEMES_EXPENSE = {
+  red: 'bg-red-100 text-red-700 border-red-200',
+  orange: 'bg-orange-100 text-orange-700 border-orange-200',
+  amber: 'bg-amber-100 text-amber-700 border-amber-200',
+  emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  sky: 'bg-sky-100 text-sky-700 border-sky-200',
+  indigo: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  purple: 'bg-purple-100 text-purple-700 border-purple-200',
+  fuchsia: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
+  rose: 'bg-rose-100 text-rose-700 border-rose-200',
+  slate: 'bg-slate-100 text-slate-700 border-slate-200'
+};
+
+// ⭐️ categories props 추가 받기
+export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setExchangeRate, categories }) {
   const availableDays = Object.keys(timeline).filter(day => timeline[day].length > 0).sort();
   const safeRate = exchangeRate || 1400;
+
+  // ⭐️ 다이내믹 컬러 추출 함수 추가
+  const getDynamicColor = (categoryName) => {
+    const cat = (categories || []).find(c => c.name === categoryName);
+    const colorKey = cat ? cat.color : 'fuchsia';
+    return THEMES_EXPENSE[colorKey] || THEMES_EXPENSE.fuchsia;
+  };
 
   const handleUpdateExpense = (dayStr, itemId, expId, field, value, isPlaceholder) => {
     setTimeline(prev => {
@@ -96,12 +118,6 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
     return Math.round(totalKrw);
   };
 
-  const getCategoryColor = (category) => {
-    const colors = { '체험': 'bg-orange-100 text-orange-700 border-orange-200', '식당': 'bg-red-100 text-red-700 border-red-200', '교통': 'bg-indigo-100 text-indigo-700 border-indigo-200', '관광': 'bg-emerald-100 text-emerald-700 border-emerald-200', '기타': 'bg-slate-100 text-slate-700 border-slate-200' };
-    return colors[category] || colors['기타'];
-  };
-
-  // ⭐️ 천 단위 콤마 추가 함수
   const formatAmount = (val) => {
     if (val === undefined || val === null || val === '') return '';
     const parts = val.toString().split('.');
@@ -189,13 +205,21 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
                   else expensesToRender = [{ id: `init_${item.id}`, desc: '', amount: item.cost || '', isConfirmed: false, currency: 'USD', isPlaceholder: true }];
 
                   const isTransport = item.category === '교통';
+                  
+                  // ⭐️ 여기에서 카테고리 색상을 동적으로 불러옴!
+                  const colorClass = getDynamicColor(item.category);
 
                   return (
                     <div key={item.id} className={`p-5 ${idx !== items.length - 1 ? 'border-b border-slate-50' : ''} hover:bg-slate-50 transition-colors rounded-2xl ${isTransport ? 'bg-indigo-50/30' : ''}`}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-400 font-black flex items-center justify-center text-xs shrink-0">{idx + 1}</div>
-                          <span className={`text-[10px] font-black px-2 py-1 rounded border shrink-0 ${getCategoryColor(item.category)}`}>{item.category}</span>
+                          
+                          {/* ⭐️ 동적 색상 클래스 적용! */}
+                          <span className={`text-[10px] font-black px-2 py-1 rounded border shrink-0 ${colorClass}`}>
+                            {item.category}
+                          </span>
+                          
                           <span className="font-bold text-slate-800 text-base truncate">{item.alias}</span>
                           {isTransport && <span className="text-[10px] font-bold text-indigo-400 border border-indigo-200 px-1.5 py-0.5 rounded bg-white">합계 제외됨</span>}
                         </div>
@@ -238,13 +262,12 @@ export default function ExpenseTotal({ timeline, setTimeline, exchangeRate, setE
                               />
                               
                               <div className="relative shrink-0 flex items-center gap-2">
-                                {/* ⭐️ 입력값에서 콤마 제거 후 업데이트, 화면에는 콤마 포맷팅해서 보여주기 */}
                                 <input 
                                   type="text" 
                                   value={formatAmount(exp.amount)} 
                                   onChange={(e) => { 
-                                    let rawVal = e.target.value.replace(/,/g, ''); // 콤마 제거
-                                    let val = rawVal.replace(/[^0-9.]/g, ''); // 숫자와 점만 허용
+                                    let rawVal = e.target.value.replace(/,/g, ''); 
+                                    let val = rawVal.replace(/[^0-9.]/g, ''); 
                                     const parts = val.split('.');
                                     if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
                                     handleUpdateExpense(dayStr, item.id, exp.id, 'amount', val, exp.isPlaceholder); 

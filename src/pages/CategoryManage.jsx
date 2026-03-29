@@ -3,32 +3,44 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-function SortableCategoryItem({ category, handleEdit, handleDelete }) {
+export const COLOR_THEMES = [
+  { key: 'red', bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' },
+  { key: 'orange', bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' },
+  { key: 'amber', bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' },
+  { key: 'emerald', bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200' },
+  { key: 'sky', bg: 'bg-sky-100', text: 'text-sky-700', border: 'border-sky-200' },
+  { key: 'indigo', bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
+  { key: 'purple', bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' },
+  { key: 'fuchsia', bg: 'bg-fuchsia-100', text: 'text-fuchsia-700', border: 'border-fuchsia-200' },
+  { key: 'rose', bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-200' },
+  { key: 'slate', bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200' },
+];
+
+function SortableCategoryItem({ category, handleEdit, deleteCategory }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto' };
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto', opacity: isDragging ? 0.5 : 1 };
+  const theme = COLOR_THEMES.find(t => t.key === category.color) || COLOR_THEMES[7];
 
   return (
-    <div ref={setNodeRef} style={style} className={`flex items-center gap-4 p-4 border rounded-2xl transition-all group relative z-10 bg-white ${isDragging ? 'border-sky-400 shadow-md opacity-80 scale-[1.02]' : 'border-sky-50 hover:shadow-sm hover:border-sky-200'}`}>
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-sky-500 px-2 touch-none">
-        ⋮⋮
+    <div ref={setNodeRef} style={style} className={`flex items-center justify-between p-4 bg-white border rounded-2xl mb-3 shadow-sm transition-all ${isDragging ? 'border-sky-400 scale-[1.02]' : 'border-slate-200 hover:border-sky-300'}`}>
+      <div className="flex items-center gap-3">
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-sky-500 touch-none px-1">⋮⋮</div>
+        <span className={`px-3 py-1.5 rounded-lg text-xs font-black border ${theme.bg} ${theme.text} ${theme.border}`}>{category.name}</span>
       </div>
-      <div className="flex-1 flex items-center gap-3">
-        <span className="text-xl">🏷️</span>
-        <h4 className="font-black text-lg text-slate-800">{category.name}</h4>
-      </div>
-      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => handleEdit(category)} className="text-xs bg-sky-50 text-sky-600 px-3 py-1.5 rounded-lg hover:bg-sky-100 font-bold border border-sky-100">수정</button>
-        <button onClick={() => handleDelete(category.id)} className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 font-bold border border-red-100">삭제</button>
+      <div className="flex items-center gap-1">
+        <button onClick={() => handleEdit(category)} className="text-xs font-bold text-slate-400 hover:text-sky-600 px-2 py-1 transition-colors">수정</button>
+        <button onClick={() => deleteCategory(category.id)} className="text-xs font-bold text-slate-400 hover:text-red-500 px-2 py-1 transition-colors">삭제</button>
       </div>
     </div>
   );
 }
 
 export default function CategoryManage({ categories, setCategories }) {
-  const [formName, setFormName] = useState('');
+  const [newCatName, setNewCatName] = useState('');
+  const [selectedColor, setSelectedColor] = useState('sky');
   const [editId, setEditId] = useState(null);
 
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -43,86 +55,69 @@ export default function CategoryManage({ categories, setCategories }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const trimmedName = formName.trim();
-    if (!trimmedName) return alert('구분(카테고리) 이름을 입력해주세요!');
-
+    if (!newCatName.trim()) return alert('구분 이름을 입력해주세요!');
+    
     if (editId) {
-      // 중복 검사 (자기 자신 제외)
-      if (categories.some(c => c.name === trimmedName && c.id !== editId)) {
-        return alert('이미 존재하는 구분입니다.');
-      }
-      setCategories(categories.map(c => c.id === editId ? { ...c, name: trimmedName } : c));
+      setCategories(categories.map(c => c.id === editId ? { ...c, name: newCatName.trim(), color: selectedColor } : c));
       setEditId(null);
     } else {
-      // 중복 검사
-      if (categories.some(c => c.name === trimmedName)) {
-        return alert('이미 존재하는 구분입니다.');
-      }
-      setCategories([...categories, { id: `cat_${Date.now()}`, name: trimmedName }]);
+      if (categories.find(c => c.name === newCatName.trim())) return alert('이미 존재하는 구분입니다.');
+      setCategories([...categories, { id: `cat_${Date.now()}`, name: newCatName.trim(), color: selectedColor }]);
     }
-    setFormName('');
+    setNewCatName('');
+    setSelectedColor('sky');
   };
 
   const handleEdit = (category) => {
-    setFormName(category.name);
     setEditId(category.id);
+    setNewCatName(category.name);
+    setSelectedColor(category.color || 'sky');
   };
 
   const handleDelete = (id) => {
-    if (categories.length <= 1) return alert('최소 1개의 구분은 남아있어야 합니다.');
-    if (window.confirm('이 구분을 삭제할까요? (이미 작성된 일정의 데이터는 삭제되지 않습니다)')) {
+    if(window.confirm('이 구분을 삭제하시겠습니까? (기존 일정의 구분 이름은 그대로 유지되지만 색상은 기본색으로 변합니다)')) {
       setCategories(categories.filter(c => c.id !== id));
     }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
-      <section className="lg:col-span-1">
-        <div className="bg-white p-6 rounded-3xl shadow-lg border border-sky-100 sticky top-36">
-          <h3 className="text-sky-700 text-xl font-black mb-4 flex items-center gap-2"><span>🏷️</span> 구분(카테고리) 등록</h3>
-          <p className="text-xs text-slate-400 font-bold mb-6">일정 리스트에서 사용할 '구분' 항목을 추가하거나 수정합니다.</p>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start relative pb-20">
+      <section className="md:col-span-1 sticky top-[100px] md:top-[136px]">
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-sky-100">
+          <h3 className="text-sky-700 text-lg font-black mb-4 flex items-center gap-2"><span>🏷️</span> 구분(카테고리) {editId ? '수정' : '등록'}</h3>
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-2">구분 이름 <span className="text-red-500">*</span></label>
-              <input 
-                type="text" 
-                value={formName} 
-                onChange={(e) => setFormName(e.target.value)} 
-                placeholder="ex) 쇼핑, 액티비티, 숙소" 
-                className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm font-bold text-slate-700 placeholder:text-slate-300" 
-              />
+              <label className="block text-xs font-black text-slate-500 mb-2">구분 이름 <span className="text-red-500">*</span></label>
+              <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="ex) 마트, 숙소, 투어" className="w-full p-3 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:border-sky-400 text-sm font-bold" />
             </div>
-            <button type="submit" className={`w-full text-white py-3 rounded-xl font-black transition-all shadow-md mt-4 ${editId ? 'bg-indigo-500 hover:bg-indigo-600' : 'bg-sky-600 hover:bg-sky-700'}`}>
-              {editId ? '수정 완료' : '새 구분 추가하기'}
-            </button>
-            {editId && (
-              <button type="button" onClick={() => { setEditId(null); setFormName(''); }} className="w-full bg-slate-100 text-slate-500 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all mt-2">
-                취소
-              </button>
-            )}
+            <div>
+              <label className="block text-xs font-black text-slate-500 mb-3">테마 색상 선택</label>
+              <div className="flex flex-wrap gap-3">
+                {COLOR_THEMES.map(theme => (
+                  <button key={theme.key} type="button" onClick={() => setSelectedColor(theme.key)} className={`w-8 h-8 rounded-full ${theme.bg} ${theme.border} border-2 flex items-center justify-center transition-transform hover:scale-110 ${selectedColor === theme.key ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : ''}`}>
+                    {selectedColor === theme.key && <span className={`text-xs ${theme.text}`}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 mt-2">
+              <button type="submit" className="w-full bg-sky-600 text-white py-3 rounded-xl font-black hover:bg-sky-700 transition-colors shadow-sm">{editId ? '수정 완료' : '새 구분 추가하기'}</button>
+              {editId && <button type="button" onClick={() => { setEditId(null); setNewCatName(''); setSelectedColor('sky'); }} className="w-full bg-slate-200 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-300 transition-colors">취소</button>}
+            </div>
           </form>
         </div>
       </section>
 
-      <section className="lg:col-span-2">
-        <div className="bg-white p-8 rounded-3xl shadow-lg border border-sky-100 min-h-[500px]">
-          <h3 className="text-xl font-black text-slate-800 mb-6 border-b border-sky-100 pb-4 flex items-center justify-between">
-            <span>현재 등록된 구분</span>
-            <span className="text-sm font-bold text-sky-600 bg-sky-50 px-3 py-1 rounded-lg">총 {categories.length}개</span>
-          </h3>
-          
-          <div className="bg-sky-50/50 text-sky-800 text-sm font-bold p-4 rounded-xl text-center mb-6 border border-sky-100 flex flex-col gap-1 items-center justify-center">
-            <span>💡 드래그하여 순서를 변경할 수 있습니다.</span>
-            <span className="text-xs text-sky-600">변경된 순서와 이름은 앱 전체의 드롭다운(목록 박스) 필터에 즉시 적용됩니다.</span>
+      <section className="md:col-span-2">
+        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-sky-100 min-h-[500px]">
+          <div className="flex items-center justify-between mb-6 border-b border-sky-100 pb-4">
+            <h3 className="text-xl font-black text-slate-800">현재 등록된 구분</h3>
+            <span className="text-xs font-bold text-sky-600 bg-sky-50 px-3 py-1 rounded-lg">총 {categories.length}개</span>
           </div>
-
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={categories.map(c => c.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-3">
-                {categories.map((cat) => (
-                  <SortableCategoryItem key={cat.id} category={cat} handleEdit={handleEdit} handleDelete={handleDelete} />
-                ))}
+              <div className="space-y-1">
+                {categories.map(category => <SortableCategoryItem key={category.id} category={category} handleEdit={handleEdit} deleteCategory={handleDelete} />)}
               </div>
             </SortableContext>
           </DndContext>

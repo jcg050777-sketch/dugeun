@@ -6,9 +6,8 @@ import ScheduleList from './pages/ScheduleList';
 import ScheduleEdit from './pages/ScheduleEdit';
 import RouteCheck from './pages/RouteCheck';
 import ScheduleCheck from './pages/ScheduleCheck';
-
 import SchedulePrepare from './pages/SchedulePrepare';
-import OutfitPrepare from './pages/OutfitPrepare'; // ⭐️ 새로 만든 복장 준비 컴포넌트
+import OutfitPrepare from './pages/OutfitPrepare';
 
 import ExpenseTotal from './pages/ExpenseTotal'; 
 import TransportCalc from './pages/TransportCalc';
@@ -24,7 +23,7 @@ const Navigation = () => {
   const path = location.pathname;
   
   let activeMain = '여행 일정';
-  if (path.startsWith('/prepare')) activeMain = '여행 준비'; // ⭐️ 여행 준비 대분류 추가
+  if (path.startsWith('/prepare')) activeMain = '여행 준비';
   if (path.startsWith('/expense')) activeMain = '여행 비용';
   if (path.startsWith('/advanced')) activeMain = '고급';
 
@@ -36,7 +35,6 @@ const Navigation = () => {
           
           <nav className="flex gap-6 md:gap-10 text-sm md:text-lg font-bold mt-2 overflow-x-auto whitespace-nowrap custom-scrollbar flex-1 pb-1">
             <Link to="/" className={activeMain === '여행 일정' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 일정</Link>
-            {/* ⭐️ 여행 준비 탭 추가! */}
             <Link to="/prepare/schedule" className={activeMain === '여행 준비' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 준비</Link>
             <Link to="/expense/total" className={activeMain === '여행 비용' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 비용</Link>
             <Link to="/advanced/backup" className={activeMain === '고급' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>데이터 세팅</Link>
@@ -54,7 +52,6 @@ const Navigation = () => {
               <Link to="/schedule/route" className={path === '/schedule/route' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>동선 체크</Link>
             </>
           )}
-          {/* ⭐️ 여행 준비 하위 메뉴 */}
           {activeMain === '여행 준비' && (
             <>
               <Link to="/prepare/schedule" className={path === '/prepare/schedule' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>일정 준비</Link>
@@ -95,14 +92,10 @@ function App() {
   const [timeline, setTimeline] = useState(() => getInitialData('dugeun_timeline', {}));
   const [exchangeRate, setExchangeRate] = useState(() => getInitialData('dugeun_exchangeRate', 1400)); 
   const [categories, setCategories] = useState(() => getInitialData('dugeun_categories', [
-    { id: 'cat_1', name: '체험' }, { id: 'cat_2', name: '식당' }, { id: 'cat_3', name: '교통' }, { id: 'cat_4', name: '관광' }, { id: 'cat_5', name: '기타' }
+    { id: 'cat_1', name: '체험', color: 'orange' }, { id: 'cat_2', name: '식당', color: 'red' }, { id: 'cat_3', name: '교통', color: 'indigo' }, { id: 'cat_4', name: '관광', color: 'emerald' }, { id: 'cat_5', name: '기타', color: 'slate' }
   ]));
 
-  const { isLoaded: googleMapsLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: libraries,
-  });
+  const { isLoaded: googleMapsLoaded } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: GOOGLE_MAPS_API_KEY, libraries: libraries });
 
   useEffect(() => { localStorage.setItem('dugeun_places', JSON.stringify(places)); }, [places]);
   useEffect(() => { localStorage.setItem('dugeun_timeline', JSON.stringify(timeline)); }, [timeline]);
@@ -116,15 +109,15 @@ function App() {
         <main className="max-w-6xl mx-auto p-4 md:p-8 relative z-10">
           <Routes>
             <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} timeline={timeline} setTimeline={setTimeline} categories={categories} googleMapsLoaded={googleMapsLoaded} />} />
-            <Route path="/schedule/edit" element={<ScheduleEdit places={places} timeline={timeline} setTimeline={setTimeline} />} />
+            <Route path="/schedule/edit" element={<ScheduleEdit places={places} timeline={timeline} setTimeline={setTimeline} categories={categories} />} />
             <Route path="/schedule/route" element={<RouteCheck timeline={timeline} googleMapsLoaded={googleMapsLoaded} />} />
-            <Route path="/schedule/check" element={<ScheduleCheck timeline={timeline} />} />
+            <Route path="/schedule/check" element={<ScheduleCheck timeline={timeline} categories={categories} />} />
             
-            {/* ⭐️ 여행 준비 라우팅! */}
             <Route path="/prepare/schedule" element={<SchedulePrepare />} />
             <Route path="/prepare/outfit" element={<OutfitPrepare timeline={timeline} />} />
             
-            <Route path="/expense/total" element={<ExpenseTotal timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} />} />
+            {/* ⭐️ ExpenseTotal에 categories props 추가 */}
+            <Route path="/expense/total" element={<ExpenseTotal timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} categories={categories} />} />
             <Route path="/expense/transport" element={<TransportCalc timeline={timeline} exchangeRate={exchangeRate} />} />
             <Route path="/expense/trend" element={<ExpenseTrend timeline={timeline} exchangeRate={exchangeRate} categories={categories} />} />
             <Route path="/advanced/category" element={<CategoryManage categories={categories} setCategories={setCategories} />} />

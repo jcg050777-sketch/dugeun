@@ -42,19 +42,22 @@ const describeSector = (x, y, radius, startAngle, endAngle) => {
   return ["M", x, y, "L", start.x, start.y, "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y, "Z"].join(" ");
 };
 
-// ⭐️ 톤다운된 카테고리 색상
-const getCategoryColor = (category) => {
-  const colors = {
-    '체험': 'bg-white text-orange-600 border-orange-100',
-    '식당': 'bg-white text-red-600 border-red-100',
-    '교통': 'bg-white text-indigo-600 border-indigo-100',
-    '관광': 'bg-white text-emerald-600 border-emerald-100',
-    '기타': 'bg-white text-slate-600 border-slate-100',
-  };
-  return colors[category] || 'bg-white text-fuchsia-600 border-fuchsia-100';
+// ⭐️ 커스텀 테마 색상 리스트 추가
+const THEMES_CHECK = {
+  red: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200', hex: '#ef4444' },
+  orange: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', hex: '#f97316' },
+  amber: { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200', hex: '#f59e0b' },
+  emerald: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', hex: '#10b981' },
+  sky: { bg: 'bg-sky-100', text: 'text-sky-700', border: 'border-sky-200', hex: '#0ea5e9' },
+  indigo: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200', hex: '#6366f1' },
+  purple: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200', hex: '#a855f7' },
+  fuchsia: { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700', border: 'border-fuchsia-200', hex: '#d946ef' },
+  rose: { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-200', hex: '#f43f5e' },
+  slate: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', hex: '#64748b' }
 };
 
-export default function ScheduleCheck({ timeline }) {
+// ⭐️ categories props 추가 받기
+export default function ScheduleCheck({ timeline, categories }) {
   const safeTimeline = timeline || {};
   const availableDays = Object.keys(safeTimeline).filter(day => Array.isArray(safeTimeline[day]) && safeTimeline[day].length > 0).sort();
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
@@ -65,6 +68,13 @@ export default function ScheduleCheck({ timeline }) {
 
   let currentRefH = 9;
   let currentRefM = 0;
+
+  // ⭐️ 다이내믹 컬러 추출 함수 추가
+  const getDynamicColorCheck = (categoryName) => {
+    const cat = (categories || []).find(c => c.name === categoryName);
+    const colorKey = cat ? cat.color : 'fuchsia';
+    return THEMES_CHECK[colorKey] || THEMES_CHECK.fuchsia;
+  };
 
   const computedItems = currentItems.map((item) => {
     let startH, startM, endH, endM;
@@ -103,17 +113,13 @@ export default function ScheduleCheck({ timeline }) {
     let computedDurationStr = durRemMins === 0 ? `${durHrs}시간` : `${durHrs}시간 ${durRemMins}분`;
     if (durHrs === 0) computedDurationStr = `${durRemMins}분`;
 
-    const colorClass = getCategoryColor(item.category);
-    // 원형 차트 색상을 위한 헥스 코드
-    const getHexColor = (cat) => {
-        const hexes = { '체험': '#fb923c', '식당': '#f87171', '교통': '#818cf8', '관광': '#34d399', '기타': '#94a3b8' };
-        return hexes[cat] || '#d946ef';
-    };
+    // ⭐️ 여기서 카테고리 색상을 동적으로 불러옴!
+    const theme = getDynamicColorCheck(item.category);
 
     return {
       ...item,
-      colorHex: getHexColor(item.category),
-      colorClass,
+      colorHex: theme.hex,
+      colorClass: `${theme.bg} ${theme.text} ${theme.border}`,
       computedStartStr: formatTimeStr(startH, startM),
       computedEndStr: formatTimeStr(endH, endM),
       computedDurationStr,
@@ -170,7 +176,6 @@ export default function ScheduleCheck({ timeline }) {
                     
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       
-                      {/* ⭐️ 시간 박스 넓게 잡고 줄바꿈 방지! */}
                       <div className="w-full sm:w-[280px] shrink-0 flex items-center justify-between bg-white py-1.5 sm:py-2 px-3 rounded-xl border border-sky-100 shadow-sm whitespace-nowrap">
                         <span className="text-[13px] sm:text-[15px] font-black text-sky-800 tracking-tight whitespace-nowrap">
                           {item.computedStartStr} <span className="text-sky-300 font-bold mx-0.5 sm:mx-1">~</span> {item.computedEndStr}
@@ -181,6 +186,7 @@ export default function ScheduleCheck({ timeline }) {
                       </div>
 
                       <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                        {/* ⭐️ 동적 색상 클래스 적용! */}
                         <div className={`shrink-0 sm:w-[80px] text-center text-[10px] sm:text-[12px] font-black px-2 py-1 sm:py-1.5 rounded-lg border ${item.colorClass}`}>
                           {item.category}
                         </div>
@@ -224,6 +230,7 @@ export default function ScheduleCheck({ timeline }) {
 
                   return (
                     <g key={item.id}>
+                      {/* ⭐️ 동적 색상 hex 코드 적용! */}
                       <path d={describeSector(100, 100, 100, startAngle, adjustedEndAngle)} fill={item.colorHex} opacity="0.85" stroke="white" strokeWidth="1.5" className="hover:opacity-100 transition-opacity cursor-pointer">
                         <title>{item.alias} ({item.computedStartStr} ~ {item.computedEndStr})</title>
                       </path>
