@@ -27,39 +27,43 @@ const Navigation = () => {
 
   return (
     <>
-      <header className="border-b border-sky-100 bg-white px-10 h-20 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-16">
-          <Link to="/" className="text-3xl font-black text-sky-600 tracking-tighter">Dugeun 💓</Link>
-          <nav className="flex gap-10 text-lg font-bold mt-2">
-            <Link to="/" className={activeMain === '여행 일정' ? "text-sky-600 border-b-4 border-sky-600 pb-5" : "text-slate-400 hover:text-slate-600 pb-5"}>여행 일정</Link>
-            <Link to="/expense/total" className={activeMain === '여행 비용' ? "text-sky-600 border-b-4 border-sky-600 pb-5" : "text-slate-400 hover:text-slate-600 pb-5"}>여행 비용</Link>
-            <Link to="/advanced/category" className={activeMain === '고급' ? "text-sky-600 border-b-4 border-sky-600 pb-5" : "text-slate-400 hover:text-slate-600 pb-5"}>고급</Link>
+      <header className="border-b border-sky-100 bg-white px-4 md:px-10 h-16 md:h-20 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-4 md:gap-16 w-full">
+          <Link to="/" className="text-xl md:text-3xl font-black text-sky-600 tracking-tighter shrink-0">Dugeun 💓</Link>
+          
+          <nav className="flex gap-6 md:gap-10 text-sm md:text-lg font-bold mt-2 overflow-x-auto whitespace-nowrap custom-scrollbar flex-1 pb-1">
+            <Link to="/" className={activeMain === '여행 일정' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 일정</Link>
+            <Link to="/expense/total" className={activeMain === '여행 비용' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 비용</Link>
+            {/* 고급 메뉴는 모바일에서 숨김 (뷰어 역할에 집중) */}
+            <Link to="/advanced/category" className={activeMain === '고급' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5 hidden md:block" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5 hidden md:block"}>고급</Link>
           </nav>
         </div>
       </header>
 
-      <div className="bg-[#f8fbff] border-b border-sky-50 px-10 py-4 sticky top-20 z-40 shadow-sm">
-        <div className="max-w-6xl mx-auto flex gap-10 text-[15px] font-bold">
+      <div className="bg-[#f8fbff] border-b border-sky-50 px-4 md:px-10 py-3 md:py-4 sticky top-16 md:top-20 z-40 shadow-sm">
+        <div className="max-w-6xl mx-auto flex gap-6 md:gap-10 text-[13px] md:text-[15px] font-bold overflow-x-auto whitespace-nowrap custom-scrollbar pb-1">
           {activeMain === '여행 일정' && (
             <>
-              <Link to="/" className={path === '/' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 리스트</Link>
-              <Link to="/schedule/edit" className={path === '/schedule/edit' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 정리</Link>
-              <Link to="/schedule/route" className={path === '/schedule/route' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>동선 체크</Link>
-              <Link to="/schedule/check" className={path === '/schedule/check' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 체크</Link>
-              <Link to="/schedule/prepare" className={path === '/schedule/prepare' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>일정 준비</Link>
+              {/* 모바일에서는 편집 기능인 '일정 리스트', '일정 정리' 숨기기 */}
+              <Link to="/" className={`hidden md:block ${path === '/' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>일정 리스트</Link>
+              <Link to="/schedule/edit" className={`hidden md:block ${path === '/schedule/edit' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>일정 정리</Link>
+              
+              <Link to="/schedule/check" className={path === '/schedule/check' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>일정 체크</Link>
+              <Link to="/schedule/route" className={path === '/schedule/route' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>동선 체크</Link>
+              <Link to="/schedule/prepare" className={path === '/schedule/prepare' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>일정 준비</Link>
             </>
           )}
           {activeMain === '여행 비용' && (
             <>
-              <Link to="/expense/total" className={path === '/expense/total' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>비용 정리</Link>
-              <Link to="/expense/transport" className={path === '/expense/transport' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>교통비 계산</Link>
-              <Link to="/expense/trend" className={path === '/expense/trend' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>비용 추이</Link>
+              <Link to="/expense/total" className={path === '/expense/total' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>비용 정리</Link>
+              <Link to="/expense/transport" className={path === '/expense/transport' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>교통비 계산</Link>
+              <Link to="/expense/trend" className={`hidden md:block ${path === '/expense/trend' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>비용 추이</Link>
             </>
           )}
           {activeMain === '고급' && (
             <>
-              <Link to="/advanced/category" className={path === '/advanced/category' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>구분 추가</Link>
-              <Link to="/advanced/backup" className={path === '/advanced/backup' ? "text-sky-700" : "text-slate-400 hover:text-sky-700 transition"}>백업 / 복구</Link>
+              <Link to="/advanced/category" className={path === '/advanced/category' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>구분 추가</Link>
+              <Link to="/advanced/backup" className={path === '/advanced/backup' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>백업 / 복구</Link>
             </>
           )}
         </div>
@@ -101,9 +105,9 @@ function App() {
     <Router>
       <div className="min-h-screen bg-[#fcfdff] text-slate-900 font-sans pb-20 relative">
         <Navigation />
-        <main className="max-w-6xl mx-auto p-8 relative z-10">
+        {/* 모바일 화면에서는 좌우 패딩을 줄여서 콘텐츠 넓게 쓰기 */}
+        <main className="max-w-6xl mx-auto p-4 md:p-8 relative z-10">
           <Routes>
-            {/* ⭐️ ScheduleList에 timeline 관련 props 전달 */}
             <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} timeline={timeline} setTimeline={setTimeline} categories={categories} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/edit" element={<ScheduleEdit places={places} timeline={timeline} setTimeline={setTimeline} />} />
             <Route path="/schedule/route" element={<RouteCheck timeline={timeline} googleMapsLoaded={googleMapsLoaded} />} />

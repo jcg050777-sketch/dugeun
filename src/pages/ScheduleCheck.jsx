@@ -42,15 +42,16 @@ const describeSector = (x, y, radius, startAngle, endAngle) => {
   return ["M", x, y, "L", start.x, start.y, "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y, "Z"].join(" ");
 };
 
+// ⭐️ 톤다운된 카테고리 색상
 const getCategoryColor = (category) => {
   const colors = {
-    '체험': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', hex: '#fb923c' },
-    '식당': { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200', hex: '#f87171' },
-    '교통': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200', hex: '#818cf8' },
-    '관광': { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', hex: '#34d399' },
-    '기타': { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', hex: '#94a3b8' },
+    '체험': 'bg-white text-orange-600 border-orange-100',
+    '식당': 'bg-white text-red-600 border-red-100',
+    '교통': 'bg-white text-indigo-600 border-indigo-100',
+    '관광': 'bg-white text-emerald-600 border-emerald-100',
+    '기타': 'bg-white text-slate-600 border-slate-100',
   };
-  return colors[category] || { bg: 'bg-fuchsia-100', text: 'text-fuchsia-700', border: 'border-fuchsia-200', hex: '#d946ef' };
+  return colors[category] || 'bg-white text-fuchsia-600 border-fuchsia-100';
 };
 
 export default function ScheduleCheck({ timeline }) {
@@ -62,12 +63,38 @@ export default function ScheduleCheck({ timeline }) {
   const currentDayStr = availableDays[currentDayIndex];
   const currentItems = currentDayStr ? safeTimeline[currentDayStr] : [];
 
+  let currentRefH = 9;
+  let currentRefM = 0;
+
   const computedItems = currentItems.map((item) => {
-    const s = parseSafeTimeData(item.startTime);
-    const e = parseSafeTimeData(item.endTime);
+    let startH, startM, endH, endM;
+
+    if (item.inputType === '시간') {
+        startH = currentRefH;
+        startM = currentRefM;
+        const durMins = parseFloat(item.duration || 1) * 60;
+        const totalMins = startH * 60 + startM + durMins;
+        endH = Math.floor(totalMins / 60) % 24;
+        endM = totalMins % 60;
+    } else {
+        const s = parseSafeTimeData(item.startTime);
+        const e = parseSafeTimeData(item.endTime);
+        startH = s.h; startM = s.m;
+        endH = e.h; endM = e.m;
+    }
+
+    currentRefH = endH;
+    currentRefM = endM;
+
+    const formatTimeStr = (h, m) => {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      let hh = h % 12;
+      if (hh === 0) hh = 12;
+      return `${ampm} ${String(hh).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
     
-    const startTotalMins = s.h * 60 + s.m;
-    let endTotalMins = e.h * 60 + e.m;
+    const startTotalMins = startH * 60 + startM;
+    let endTotalMins = endH * 60 + endM;
     if (endTotalMins < startTotalMins) endTotalMins += 1440; 
 
     const durMins = endTotalMins - startTotalMins;
@@ -76,14 +103,19 @@ export default function ScheduleCheck({ timeline }) {
     let computedDurationStr = durRemMins === 0 ? `${durHrs}시간` : `${durHrs}시간 ${durRemMins}분`;
     if (durHrs === 0) computedDurationStr = `${durRemMins}분`;
 
-    const theme = getCategoryColor(item.category);
+    const colorClass = getCategoryColor(item.category);
+    // 원형 차트 색상을 위한 헥스 코드
+    const getHexColor = (cat) => {
+        const hexes = { '체험': '#fb923c', '식당': '#f87171', '교통': '#818cf8', '관광': '#34d399', '기타': '#94a3b8' };
+        return hexes[cat] || '#d946ef';
+    };
 
     return {
       ...item,
-      colorHex: theme.hex,
-      colorClass: `${theme.bg} ${theme.text} ${theme.border}`,
-      computedStartStr: s.str,
-      computedEndStr: e.str,
+      colorHex: getHexColor(item.category),
+      colorClass,
+      computedStartStr: formatTimeStr(startH, startM),
+      computedEndStr: formatTimeStr(endH, endM),
       computedDurationStr,
       startTotalMins,
       endTotalMins
@@ -127,42 +159,41 @@ export default function ScheduleCheck({ timeline }) {
               <p className="text-center text-slate-400 py-20">이 날짜에 등록된 일정이 없습니다.</p>
             ) : (
               computedItems.map((item, idx) => (
-                <div key={item.id} className="flex gap-4 items-start">
+                <div key={item.id} className="flex gap-2 sm:gap-4 items-start">
                   
-                  {/* 타임라인 연결 선 */}
-                  <div className="flex flex-col items-center relative w-6 mt-5">
+                  <div className="flex flex-col items-center relative w-4 sm:w-6 mt-3 sm:mt-5 shrink-0">
                     {idx !== computedItems.length - 1 && <div className="absolute top-4 w-0.5 h-[calc(100%+12px)] bg-slate-200"></div>}
-                    <div className="w-3.5 h-3.5 rounded-full border-[3px] border-sky-400 bg-white z-10"></div>
+                    <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full border-[3px] border-sky-400 bg-white z-10"></div>
                   </div>
                   
-                  <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col hover:border-sky-300 hover:shadow-md transition-all shadow-sm gap-3 mb-2">
+                  <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-4 flex flex-col hover:border-sky-300 shadow-sm gap-2 sm:gap-3 mb-2">
                     
-                    <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       
-                      {/* ⭐️ 너비를 280px로 늘리고, 줄바꿈 방지(whitespace-nowrap) 완벽 적용! */}
-                      <div className="w-[280px] shrink-0 flex items-center justify-between bg-white py-2 px-3.5 rounded-xl border border-sky-100 shadow-sm whitespace-nowrap">
-                        <span className="text-[15px] font-black text-sky-800 tracking-tight whitespace-nowrap">
-                          {item.computedStartStr} <span className="text-sky-300 font-bold mx-1">~</span> {item.computedEndStr}
+                      {/* ⭐️ 시간 박스 넓게 잡고 줄바꿈 방지! */}
+                      <div className="w-full sm:w-[280px] shrink-0 flex items-center justify-between bg-white py-1.5 sm:py-2 px-3 rounded-xl border border-sky-100 shadow-sm whitespace-nowrap">
+                        <span className="text-[13px] sm:text-[15px] font-black text-sky-800 tracking-tight whitespace-nowrap">
+                          {item.computedStartStr} <span className="text-sky-300 font-bold mx-0.5 sm:mx-1">~</span> {item.computedEndStr}
                         </span>
-                        <span className="text-[12px] font-bold text-sky-500 whitespace-nowrap shrink-0 ml-2">
+                        <span className="text-[10px] sm:text-[12px] font-bold text-sky-500 whitespace-nowrap shrink-0 ml-1 sm:ml-2">
                           ({item.computedDurationStr})
                         </span>
                       </div>
 
-                      {/* 구분 뱃지 */}
-                      <div className={`w-[80px] shrink-0 text-center text-[12px] font-black px-2 py-1.5 rounded-lg border ${item.colorClass}`}>
-                        {item.category}
-                      </div>
+                      <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                        <div className={`shrink-0 sm:w-[80px] text-center text-[10px] sm:text-[12px] font-black px-2 py-1 sm:py-1.5 rounded-lg border ${item.colorClass}`}>
+                          {item.category}
+                        </div>
 
-                      {/* 별칭 + 📌 메모 */}
-                      <div className="flex-1 min-w-0 border-l-2 border-slate-200 pl-4 py-1 flex items-center gap-2.5">
-                        <h4 className="font-bold text-slate-800 text-[17px] truncate">{item.alias || '이름 없음'}</h4>
-                        
-                        {item.memo && (
-                          <span className="text-[14px] italic font-black text-rose-500 truncate flex items-center gap-1">
-                            <span className="text-[13px] drop-shadow-sm">📌</span> {item.memo}
-                          </span>
-                        )}
+                        <div className="flex-1 min-w-0 sm:border-l-2 sm:border-slate-200 sm:pl-4 sm:py-1 flex items-center gap-1.5 sm:gap-2.5">
+                          <h4 className="font-bold text-slate-800 text-[14px] sm:text-[17px] truncate">{item.alias || '이름 없음'}</h4>
+                          
+                          {item.memo && (
+                            <span className="text-[11px] sm:text-[14px] italic font-black text-rose-500 truncate flex items-center gap-1">
+                              <span className="text-[10px] sm:text-[13px] drop-shadow-sm">📌</span> {item.memo}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                     </div>
