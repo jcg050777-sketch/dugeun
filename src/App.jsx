@@ -8,6 +8,7 @@ import RouteCheck from './pages/RouteCheck';
 import ScheduleCheck from './pages/ScheduleCheck';
 import SchedulePrepare from './pages/SchedulePrepare';
 import OutfitPrepare from './pages/OutfitPrepare';
+import TravelReport from './pages/TravelReport';
 
 import ExpenseTotal from './pages/ExpenseTotal'; 
 import TransportCalc from './pages/TransportCalc';
@@ -25,7 +26,7 @@ const Navigation = () => {
   let activeMain = '여행 일정';
   if (path.startsWith('/prepare')) activeMain = '여행 준비';
   if (path.startsWith('/expense')) activeMain = '여행 비용';
-  if (path.startsWith('/advanced')) activeMain = '고급';
+  if (path.startsWith('/advanced')) activeMain = '데이터 세팅';
 
   return (
     <>
@@ -33,16 +34,16 @@ const Navigation = () => {
         <div className="flex items-center gap-4 md:gap-16 w-full">
           <Link to="/" className="text-xl md:text-3xl font-black text-sky-600 tracking-tighter shrink-0">Dugeun 💓</Link>
           
-          <nav className="flex gap-6 md:gap-10 text-sm md:text-lg font-bold mt-2 overflow-x-auto whitespace-nowrap custom-scrollbar flex-1 pb-1">
+          <nav className="flex gap-6 md:gap-10 text-sm md:text-lg font-bold mt-2 overflow-x-auto whitespace-nowrap custom-scrollbar flex-1 pb-1 print:hidden">
             <Link to="/" className={activeMain === '여행 일정' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 일정</Link>
             <Link to="/prepare/schedule" className={activeMain === '여행 준비' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 준비</Link>
             <Link to="/expense/total" className={activeMain === '여행 비용' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>여행 비용</Link>
-            <Link to="/advanced/backup" className={activeMain === '고급' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>데이터 세팅</Link>
+            <Link to="/advanced/backup" className={activeMain === '데이터 세팅' ? "text-sky-600 border-b-4 border-sky-600 pb-3 md:pb-5" : "text-slate-400 hover:text-slate-600 pb-3 md:pb-5"}>데이터 세팅</Link>
           </nav>
         </div>
       </header>
 
-      <div className="bg-[#f8fbff] border-b border-sky-50 px-4 md:px-10 py-3 md:py-4 sticky top-16 md:top-20 z-40 shadow-sm">
+      <div className="bg-[#f8fbff] border-b border-sky-50 px-4 md:px-10 py-3 md:py-4 sticky top-16 md:top-20 z-40 shadow-sm print:hidden">
         <div className="max-w-6xl mx-auto flex gap-6 md:gap-10 text-[13px] md:text-[15px] font-bold overflow-x-auto whitespace-nowrap custom-scrollbar pb-1">
           {activeMain === '여행 일정' && (
             <>
@@ -65,10 +66,12 @@ const Navigation = () => {
               <Link to="/expense/trend" className={`hidden md:block ${path === '/expense/trend' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>비용 추이</Link>
             </>
           )}
-          {activeMain === '고급' && (
+          {activeMain === '데이터 세팅' && (
             <>
               <Link to="/advanced/backup" className={path === '/advanced/backup' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}>백업 / 복구</Link>
               <Link to="/advanced/category" className={`hidden md:block ${path === '/advanced/category' ? "text-sky-700" : "text-slate-400 hover:text-sky-700"}`}>구분 추가</Link>
+              {/* ⭐️ 이모지 아이콘 제거 및 색상 톤다운 */}
+              <Link to="/advanced/report" className={path === '/advanced/report' ? "text-slate-800 font-black" : "text-slate-500 hover:text-slate-800"}>요약 리포트 (PDF)</Link>
             </>
           )}
         </div>
@@ -104,9 +107,9 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#fcfdff] text-slate-900 font-sans pb-20 relative">
+      <div className="min-h-screen bg-[#fcfdff] text-slate-900 font-sans pb-20 relative print:bg-white print:pb-0">
         <Navigation />
-        <main className="max-w-6xl mx-auto p-4 md:p-8 relative z-10">
+        <main className="max-w-6xl mx-auto p-4 md:p-8 relative z-10 print:p-0 print:m-0">
           <Routes>
             <Route path="/" element={<ScheduleList places={places} setPlaces={setPlaces} timeline={timeline} setTimeline={setTimeline} categories={categories} googleMapsLoaded={googleMapsLoaded} />} />
             <Route path="/schedule/edit" element={<ScheduleEdit places={places} timeline={timeline} setTimeline={setTimeline} categories={categories} />} />
@@ -116,12 +119,14 @@ function App() {
             <Route path="/prepare/schedule" element={<SchedulePrepare />} />
             <Route path="/prepare/outfit" element={<OutfitPrepare timeline={timeline} />} />
             
-            {/* ⭐️ ExpenseTotal에 categories props 추가 */}
             <Route path="/expense/total" element={<ExpenseTotal timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} categories={categories} />} />
             <Route path="/expense/transport" element={<TransportCalc timeline={timeline} exchangeRate={exchangeRate} />} />
             <Route path="/expense/trend" element={<ExpenseTrend timeline={timeline} exchangeRate={exchangeRate} categories={categories} />} />
+            
             <Route path="/advanced/category" element={<CategoryManage categories={categories} setCategories={setCategories} />} />
             <Route path="/advanced/backup" element={<BackupRestore places={places} setPlaces={setPlaces} timeline={timeline} setTimeline={setTimeline} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate} categories={categories} setCategories={setCategories} />} />
+            
+            <Route path="/advanced/report" element={<TravelReport timeline={timeline} />} />
           </Routes>
         </main>
       </div>
